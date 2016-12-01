@@ -1,0 +1,8 @@
+{
+    "host": "https://api.huobi.com/apiv3",
+    "apiKey": "c51a66be-45e7bdcd-10bdef43-6b7d8",
+    "secretKey": "223c0ee1-7a6dff29-5b4824d8-b07d1",
+    "trace": false,
+    "leverage": 20,
+    "password":""
+}
