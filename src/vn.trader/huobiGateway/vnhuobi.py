@@ -261,7 +261,6 @@ class HuobiApi(object):
             for symbol in self.spotTicker:
                 sleep(0.5)
                 r, error = self.processRequestTicker(symbol,'ticker')
-                print "processStreamPrices is start"
                 try:
                     if r.status_code == 200:
                         data = r.json()
