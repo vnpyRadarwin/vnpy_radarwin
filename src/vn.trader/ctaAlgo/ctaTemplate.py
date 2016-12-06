@@ -90,12 +90,6 @@ class CtaTemplate(object):
         raise NotImplementedError
     
     #----------------------------------------------------------------------
-    # 账户信息推送  Radarwin add Start 20161208
-    def onPosition(self, position):
-        """收到账户信息推送（必须由用户继承实现）"""
-        raise NotImplementedError
-    #账户信息推送  Radarwin add End 20161208
-    # ----------------------------------------------------------------------
     def buy(self, price, volume, stop=False):
         """买开"""
         return self.sendOrder(CTAORDER_BUY, price, volume, stop)
