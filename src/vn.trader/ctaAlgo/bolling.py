@@ -376,6 +376,10 @@ class Bolling(CtaTemplate):
         self.dbCon.insUpdMySqlData(sqlcontent, value,dbFlag=DATABASE_TRADER)
         pass
 
+    #------------------------------------------------------------------------
+    def onPosition(self,position):
+        print position
+        pass
 
 if __name__ == '__main__':
     # ----------------------------------------------------------------------
