@@ -296,7 +296,7 @@ class CtaEngine(object):
     def processPositionEvent(self, event):
         """处理持仓推送"""
         pos = event.dict_['data']
-        # 账户信息推送  Radarwin add Start
+        # 账户信息推送  Radarwin add Start 20161208
         for name in self.strategyDict:
             strategy = self.strategyDict[name]
             strategy.onPosition(pos)
