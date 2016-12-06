@@ -198,7 +198,6 @@ class Bolling(CtaTemplate):
         # 计算K线
         tickMinute = tick.datetime.minute
         #print tickMinute , self.barMinute
-        print "tick is runing:",tickMinute
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
         #if tickMinute != self.barMinute:    #一分钟
         if ((tickMinute != self.barMinute and (tickMinute + 1) % 5 == 0) or not self.bar):  # 五分钟
@@ -251,7 +250,6 @@ class Bolling(CtaTemplate):
                     self.entryPrice = 0
                     self.lasttradetype = -1
                     self.buy(bar.close + 1, self.lots)
-
             # 判断是否开仓
             if self.pos == 0 and self.direction == 0 and self.signal == 1 and bar.close > self.upLineArray[-1]:
                 self.direction = 1
@@ -261,7 +259,6 @@ class Bolling(CtaTemplate):
                 self.intraTradeHigh = max(self.intraTradeHigh, bar.high)
                 self.lasttradetype = 1
                 self.buy(bar.close+1, self.lots)
-
             if self.pos == 0 and self.direction == 0 and self.signal == -1 and bar.close < self.lowLineArray[-1]:
                 self.direction = -1
                 self.entryPrice = bar.close
@@ -270,7 +267,6 @@ class Bolling(CtaTemplate):
                 self.intraTradeLow = min(self.intraTradeLow, bar.low)
                 self.lasttradetype = -1
                 self.sell(bar.close-1, self.lots)
-
     # ----------------------------------------------------------------------
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
