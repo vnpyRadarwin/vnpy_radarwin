@@ -39,7 +39,7 @@ class rwDbConnection(object):
         }
 
     # ----------------------------------------------------------------------
-    def getMySqlData(self,query,params,dbFlag=DATABASE_DQPT):
+    def getMySqlData(self,query,params="",dbFlag=DATABASE_DQPT):
 
         if dbFlag == DATABASE_TRADER:
             conn = pymysql.connect(**self.config_tradelog)
