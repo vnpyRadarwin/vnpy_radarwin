@@ -12,7 +12,7 @@
 # pos:买/卖量
 # price：买/卖价格
 #返回值：False-》不可交易，True-》可交易
-def getPosition(params, positionDict, pos, price):
+def getPosition(params, positionDict, price, pos):
     if not positionDict:
         return False
     if params == 'buy':
