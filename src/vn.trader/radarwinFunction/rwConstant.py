@@ -17,6 +17,10 @@ ORDER_TYPE_SELL = u'卖'
 
 EXCHANGE_HUOBI='HUOBI'     # HUOBI比特币交易所
 
+EXCHANGE_SYMBOL={'OKCOIN':['BTC','CNY'],
+                'HUOBI':['BTC','CNY']
+                }
+
 #log输出文件名
 #LOGGER_FILE_NAME = '/home/owenpanhao/vnpy_project/log/atr_test_1.log'
 LOGGER_FILE_NAME = 'D:\\python_workspace\\log\\atr_test.log'
