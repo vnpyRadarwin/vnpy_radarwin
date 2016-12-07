@@ -28,6 +28,8 @@ from vtConstant import *
 from vtGateway import VtSubscribeReq, VtOrderReq, VtCancelOrderReq, VtLogData
 from vtFunction import todayDate
 
+from radarwinFunction.rwConstant import *
+
 
 ########################################################################
 class CtaEngine(object):
@@ -299,13 +301,15 @@ class CtaEngine(object):
         """处理持仓推送"""
         pos = event.dict_['data']
         # 账户信息推送  Radarwin add Start
-        if pos.vtSymbol not in self.positionDict:
-            self.positionDict[pos.vtSymbol]=pos
-        else:
-            for name in self.strategyDict:
-                strategy = self.strategyDict[name]
-                strategy.onPosition(self.positionDict)
-            self.positionDict={}
+        if pos.gatewayName in EXCHANGE_SYMBOL:
+            if pos.vtSymbol.upper() in EXCHANGE_SYMBOL[pos.gatewayName]:
+                self.positionDict[pos.vtSymbol]=pos
+
+            if len(EXCHANGE_SYMBOL[pos.gatewayName])==len(self.positionDict):
+                for name in self.strategyDict:
+                    strategy = self.strategyDict[name]
+                    strategy.onPosition(self.positionDict)
+                self.positionDict={}
         # 账户信息推送 Radarwin add End
 
         # 更新持仓缓存数据
