@@ -76,7 +76,9 @@ class CtaEngine(object):
         
         # 注册事件监听
         self.registerEvent()
- 
+
+        self.positionDict={}
+
     #----------------------------------------------------------------------
     def sendOrder(self, vtSymbol, orderType, price, volume, strategy):
         """发单"""
@@ -296,6 +298,15 @@ class CtaEngine(object):
     def processPositionEvent(self, event):
         """处理持仓推送"""
         pos = event.dict_['data']
+        # 账户信息推送  Radarwin add Start
+        if pos.vtSymbol not in self.positionDict:
+            self.positionDict[pos.vtSymbol]=pos
+        else:
+            for name in self.strategyDict:
+                strategy = self.strategyDict[name]
+                strategy.onPosition(self.positionDict)
+            self.positionDict={}
+        # 账户信息推送 Radarwin add End
 
         # 更新持仓缓存数据
         if pos.vtSymbol in self.tickStrategyDict:
