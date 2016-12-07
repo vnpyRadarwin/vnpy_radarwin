@@ -4,31 +4,23 @@
 包含一些开发中常用的函数
 """
 
-import os
-import json
 #----------------------------------------------------------------------
-def loadMySqlSetting():
-    """载入MySqlDB数据库的配置"""
-    fileName = 'RW_setting.json'
-    path = os.path.abspath(os.path.dirname(__file__)) 
-    fileName = os.path.join(path, fileName)  
-    
-    try:
-        f = file(fileName)
-        setting = json.load(f)
-        host = setting['host']
-        userName = setting['userName']
-        password = setting['password']
-        db = setting['db']
-        port = setting['port']
-    except:
-        host = '172.16.1.116'
-        userName = 'rw_dqpt'
-        password = 'Abcd1234'
-        db = 'dqpt'
-        port = 3306
-        
-    return host, userName,password,db,port
+# 根据当前账户信息判断是否可买卖
+#参数
+# params:buy,sell
+# positionDict:当前账户信息
+# pos:买/卖量
+# price：买/卖价格
+def getPosition(params, positionDict, pos, price):
+    if params == 'buy':
+        posData = positionDict['cny']
+        if posData.position < pos * price:
+            return False
+    elif params == 'sell':
+        posData = positionDict['btc']
+        if posData.position < pos:
+            return False
+    return True
 
 
 
