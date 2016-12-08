@@ -18,7 +18,7 @@ class rwDbConnection(object):
             'cursorclass': pymysql.cursors.DictCursor
         }
 
-        self.config_tradelog = {
+        self.config_vnpy = {
             'host': '172.16.1.116',
             'port': 3306,
             'user': 'rw_vnpy',
@@ -39,10 +39,10 @@ class rwDbConnection(object):
         }
 
     # ----------------------------------------------------------------------
-    def getMySqlData(self,query,params="",dbFlag=DATABASE_DQPT):
+    def getMySqlData(self,query,params=None,dbFlag=DATABASE_DQPT):
 
-        if dbFlag == DATABASE_TRADER:
-            conn = pymysql.connect(**self.config_tradelog)
+        if dbFlag == DATABASE_VNPY:
+            conn = pymysql.connect(**self.config_vnpy)
         elif dbFlag == DATABASE_CLOUD:
             conn = pymysql.connect(**self.config_cloud)
         else:
@@ -58,8 +58,8 @@ class rwDbConnection(object):
 
     # ----------------------------------------------------------------------
     def insUpdMySqlData(self, query, params, dbFlag=DATABASE_DQPT):
-        if dbFlag == DATABASE_TRADER:
-            conn = pymysql.connect(**self.config_tradelog)
+        if dbFlag == DATABASE_VNPY:
+            conn = pymysql.connect(**self.config_vnpy)
         elif dbFlag == DATABASE_CLOUD:
             conn = pymysql.connect(**self.config_cloud)
         else:
@@ -74,11 +74,11 @@ class rwDbConnection(object):
 
 
 if __name__== '__main__':
-    #SQL='SELECT open,high,low,close,volumn,date FROM okcn_btc_cny_1 ORDER BY date DESC LIMIT 1,%s'
-    SQL='INSERT INTO VN_PY_TEST (Open,High,Low,Close,TotalVolume) Values(%s,%s,%s,%s,%s)'
-    params=['1000','2000','3000','4000','5001']
+    SQL='SELECT * FROM account_info'
+    #SQL='INSERT INTO VN_PY_TEST (Open,High,Low,Close,TotalVolume) Values(%s,%s,%s,%s,%s)'
+    #params=['1000','2000','3000','4000','5001']
     dbCon=rwDbConnection()
-    data= dbCon.insUpdMySqlData(SQL,params)
+    data= dbCon.getMySqlData(SQL,dbFlag=DATABASE_VNPY)
     print data
 
 
