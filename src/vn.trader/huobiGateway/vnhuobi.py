@@ -7,6 +7,7 @@ from Queue import Queue,Empty
 import urllib
 import requests
 from threading import Thread
+from radarwinFunction.rwFunction import *
 
 # 账户货币代码
 
@@ -70,7 +71,8 @@ HOST_MARKET_CNY='staticmarket'
 HOST_MARKET_USD='usdmarket'
 JSON_NAME='%s_%s_json.js'
 
-
+RECONNECTION_TIMES=3
+RECONNECTION_SLEEPTIMES=0.5
 
 
 ########################################################################
@@ -114,7 +116,6 @@ class HuobiApi(object):
             try:
                 req = self.reqQueue.get(block=True, timeout=1)  # 获取请求的阻塞为一秒
                 callback = req['callback']
-                #reqID = req['reqID']
                 r, error = self.processRequest(req)
                 try:
                     if r.status_code == 200:
@@ -124,6 +125,7 @@ class HuobiApi(object):
                         callback(data)
                 except Exception, e:
                     self.onError(str(e))
+                    return
 
             except Empty:
                 pass
@@ -132,16 +134,16 @@ class HuobiApi(object):
 
     def processRequest(self, req):
         """发送请求并通过回调函数推送数据结果"""
-        r = None
-        error = None
-        params = req['params']
-        payload = urllib.urlencode(params)
-        try:
-            r = requests.post(self.host, params=payload)
-        except Exception, e:
-            error=e
+        reqParamas = req['params']
+        #payload = urllib.urlencode(params1)
 
-        return r,error
+        #try:
+        #result1= requests.post(self.host, params=params1)
+        #print payload
+        result,error=reConnection(times=RECONNECTION_TIMES,host=self.host,paramas=reqParamas,sleepTime=RECONNECTION_SLEEPTIMES)
+        #except Exception, e:
+        #    error=e
+        return result,error
 
     # ----------------------------------------------------------------------
 
@@ -168,48 +170,44 @@ class HuobiApi(object):
 
     def processRequestTicker(self, symbol,ticker):
         """实时数据请求"""
-        result = None
-        error = None
-        try:
-            # 实时行情数据文件名
-            fileName = JSON_NAME % (ticker, symbol)
-            # 实时行情数据地址
-            tickerURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName
+        #try:
+        # 实时行情数据文件名
+        fileName = JSON_NAME % (ticker, symbol)
+        # 实时行情数据地址
+        tickerURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName
 
-            result = requests.post(tickerURL)
-
-        except Exception, e:
-            print "TickerRequestError(" + str(symbol) + "):" + str(e.message)
-            sleep(0.5)
-            try:
-                result = requests.post(tickerURL)
-            except Exception, e:
-                print "TickerRequestError_again(" + symbol + "):" + str(e.message)
-                error = e
+        #result = requests.post(tickerURL)
+        result,error = reConnection(times=RECONNECTION_TIMES,host=tickerURL,sleepTime=RECONNECTION_SLEEPTIMES)
+        # except Exception, e:
+        #     sleep(0.5)
+        #     try:
+        #         result = requests.post(tickerURL)
+        #     except Exception, e:
+        #         print "Tick Data Connect Fail"
+        #         error = e
 
         return result, error
 
     # ----------------------------------------------------------------------
 
-    def processRequestDepth(self,symbol,depth):
-        """发送请求并通过回调函数推送数据结果"""
-        result = None
-        error = None
-
-        try:
-            fileName=JSON_NAME % (depth, symbol)
-            deptURL=HOST_URL+'/'+HOST_MARKET_CNY+'/'+fileName
-            result = requests.post(deptURL)
-        except Exception, e:
-            print "DepthRequestError("+symbol+"):" + str(e.message)
-            sleep(0.5)
-            try:
-                result = requests.post(deptURL)
-            except Exception, e:
-                print "DepthRequestError_again(" + symbol + "):" + str(e.message)
-                error = e
-
-        return result, error
+    # def processRequestDepth(self,symbol,depth):
+    #     """发送请求并通过回调函数推送数据结果"""
+    #     result = None
+    #     error = None
+    #
+    #     try:
+    #         fileName=JSON_NAME % (depth, symbol)
+    #         deptURL=HOST_URL+'/'+HOST_MARKET_CNY+'/'+fileName
+    #         result = requests.post(deptURL)
+    #     except Exception, e:
+    #         sleep(0.5)
+    #         try:
+    #             result = requests.post(deptURL)
+    #         except Exception, e:
+    #             print "Depty Data Connect Fail"
+    #             error = e
+    #
+    #     return result, error
 
     # ----------------------------------------------------------------------
 
@@ -269,14 +267,14 @@ class HuobiApi(object):
                     self.onError(str(e))
                     return
 
-                r, error = self.processRequestDepth(symbol,'depth')
-                try:
-                    if r.status_code == 200:
-                        data = r.json()
-                        self.onDepth(data)
-                except Exception,e:
-                    self.onError(str(e))
-                    return
+                # r, error = self.processRequestDepth(symbol,'depth')
+                # try:
+                #     if r.status_code == 200:
+                #         data = r.json()
+                #         self.onDepth(data)
+                # except Exception,e:
+                #     self.onError(str(e))
+                #     return
 
 
     #----------------------------------------------------------------------
