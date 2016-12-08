@@ -118,7 +118,7 @@ class HuobiApi(object):
                 callback = req['callback']
                 r, error = self.processRequest(req)
                 try:
-                    if r.status_code == 2001:
+                    if r.status_code == 200:
                         data = r.json()
                         if self.DEBUG:
                             print callback.__name__
