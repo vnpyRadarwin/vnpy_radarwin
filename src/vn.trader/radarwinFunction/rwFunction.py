@@ -3,10 +3,16 @@
 """
 包含一些开发中常用的函数
 """
+from time import sleep
+
+import requests
+
 TRADE_TYPE_BUY = 'buy'
 TRADE_TYPE_SELL = 'sell'
 SYMBOL_CNY='cny'
 SYMBOL_BTC='btc'
+
+
 #----------------------------------------------------------------------
 # 根据当前账户信息判断是否可买卖
 #参数
@@ -30,6 +36,40 @@ def getPosition(params, positionDict, price, pos):
                 return False
     return True
 
+#----------------------------------------------------------------------
+# 断线重连机制
 
+#def reConnection(host,paramas=None,style='post',sleepTime=0.5,times=3):
+def reConnection(times,**kwargs):
+    result =None
+    error=None
+
+    if 'paramas' in kwargs:
+        try:
+            result=requests.post(kwargs['host'],kwargs['paramas'])
+        except Exception, e:
+            sleep(kwargs['sleepTime'])
+            times = times - 1
+            if times > 0:
+                reConnection(times, **kwargs)
+            else:
+                print "Account Info connectin fail"
+            error = e
+    else:
+        try:
+            result = requests.post(kwargs['host'])
+        except Exception, e:
+            sleep(kwargs['sleepTime'])
+            times = times - 1
+            if times > 0:
+                reConnection(times,**kwargs)
+            else:
+                print "Tick Data connectin fail"
+            error =e
+    return result,error
+
+if __name__ == '__main__':
+    result=reConnection(times=3,host='http://api.huobi.coms/staticmarket/ticker_btc_json.js',sleepTime=0.5)
+    #print result
 
  
