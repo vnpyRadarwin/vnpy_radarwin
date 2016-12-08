@@ -2,7 +2,7 @@
 
 #数据库来源分类
 DATABASE_DQPT='DQPT'
-DATABASE_TRADER='TRADER'
+DATABASE_VNPY='VNPY'
 DATABASE_CLOUD='CLOUD'
 
 #--------------------------------------------------------------
@@ -17,6 +17,7 @@ ORDER_TYPE_SELL = u'卖'
 
 EXCHANGE_HUOBI='HUOBI'     # HUOBI比特币交易所
 
+#每个交易所对应的可交易对象以及货币类型
 EXCHANGE_SYMBOL={'OKCOIN':['BTC','CNY'],
                 'HUOBI':['BTC','CNY']
                 }
