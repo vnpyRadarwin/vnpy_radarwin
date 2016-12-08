@@ -20,10 +20,10 @@ class rwDbConnection(object):
 
         self.config_vnpy = {
             'host': '172.16.1.116',
-            'port': 3306,
             'user': 'rw_vnpy',
             'password': 'Abcd1234',
             'db': 'vnpy',
+            'port': 3306,
             'charset': 'utf8mb4',
             'cursorclass': pymysql.cursors.DictCursor
         }
