@@ -22,11 +22,11 @@ from time import localtime
 import talib as ta
 # 价格类型映射
 priceTypeMap = {}
-priceTypeMap['buy'] = (DIRECTION_LONG, PRICETYPE_LIMITPRICE)
-priceTypeMap['buy_market'] = (DIRECTION_LONG, PRICETYPE_MARKETPRICE)
-priceTypeMap['sell'] = (DIRECTION_SHORT, PRICETYPE_LIMITPRICE)
-priceTypeMap['sell_market'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
-priceTypeMapReverse = {v: k for k, v in priceTypeMap.items()} 
+priceTypeMap['1'] = (DIRECTION_LONG, PRICETYPE_LIMITPRICE)
+priceTypeMap['2'] = (DIRECTION_SHORT, PRICETYPE_LIMITPRICE)
+priceTypeMap['3'] = (DIRECTION_LONG, PRICETYPE_MARKETPRICE)
+priceTypeMap['4'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
+#priceTypeMapReverse = {v: k for k, v in priceTypeMap.items()}
 
 # 方向类型映射
 directionMap = {}
@@ -214,13 +214,19 @@ class HuobiGateway(VtGateway):
         pass
     # ----------------------------------------------------------------------
     def qryOrders(self):
-        """查询委托"""
-        self.api.getOrders()
+        #下单后调用
+        if self.api.tradeFlag:
+            """查询委托"""
+            self.api.getOrders()
 
     #----------------------------------------------------------------------
     def qryTrades(self):
-        """查询委托"""
-        self.api.getTrades()
+        # 下单后调用
+        if self.api.tradeFlag:
+            """查询委托"""
+            self.api.getOrders()
+            self.api.getTrades()
+
 
     # ----------------------------------------------------------------------
     def close(self):
@@ -232,8 +238,9 @@ class HuobiGateway(VtGateway):
         """初始化连续查询"""
         if self.qryEnabled:
             # 需要循环的查询函数列表
-            self.qryFunctionList = [self.qryAccount,self.qryOrders,self.qryTrades]
-            
+
+            self.qryFunctionList = [self.qryAccount,self.qryTrades]#self.qryOrders,
+
             self.qryCount = 0           # 查询触发倒计时
             self.qryTrigger = 2         # 查询触发点
             self.qryNextFunction = 0    # 上次运行的查询函数索引
@@ -295,7 +302,7 @@ class Api(vnhuobi.HuobiApi):
         self.trade_password = False
 
         #self.initCallback()
-
+        self.tradeFlag=False
 
     #----------------------------------------------------------------------
     def qryInstruments(self):
@@ -494,7 +501,7 @@ class Api(vnhuobi.HuobiApi):
             order.exchange = EXCHANGE_HUOBI
             order.vtSymbol = '.'.join([order.symbol, order.exchange])
             order.orderID = str(d['id'])
-            # order.direction = directionMapReverse.get(d['side'], DIRECTION_UNKNOWN)
+            order.direction, priceType = priceTypeMap[d['type']]
             order.offset = orderTypeMap[str(d['type'])]
             #order.status = orderStatusMap[str(d['status'])]
 
@@ -512,6 +519,7 @@ class Api(vnhuobi.HuobiApi):
         #self.writeLog(u'委托信息查询完成')
     # ----------------------------------------------------------------------
     def getTrades(self):
+        self.tradeFlag = False
         """查询最近的成交订单"""
         timestamp = long(time.time())
         paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
@@ -526,28 +534,28 @@ class Api(vnhuobi.HuobiApi):
         """回调函数"""
         if len(data)==0:
             return
-        for d in data:
-            trade = VtTradeData()
-            trade.gatewayName = self.gatewayName
+        d=data[0]
+        trade = VtTradeData()
+        trade.gatewayName = self.gatewayName
 
-            trade.symbol = BTC_CNY_SPOT
-            trade.exchange = EXCHANGE_HUOBI
-            trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
-            trade.orderID = str(d['id'])
+        trade.symbol = BTC_CNY_SPOT
+        trade.exchange = EXCHANGE_HUOBI
+        trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
+        trade.orderID = str(d['id'])
 
-            #order.direction = directionMapReverse.get(d['side'], DIRECTION_UNKNOWN)
-            trade.offset = tradeTypeMap[str(d['type'])]
-            #order.status = orderStatusMap[str(d['status'])]
+        trade.direction, priceType = priceTypeMap[str(d['type'])]
+        trade.offset = tradeTypeMap[str(d['type'])]
+        #order.status = orderStatusMap[str(d['status'])]
 
-            trade.price = d['order_price']
-            #order.volume = d['order_amount']
-            trade.orderTime = generateDateTimeStamp(d['order_time'])
+        trade.price = d['order_price']
+        #order.volume = d['order_amount']
+        trade.orderTime = generateDateTimeStamp(d['order_time'])
 
-            trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
+        trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
 
-            self.gateway.onTrade(trade)
+        self.gateway.onTrade(trade)
 
-            self.orderDict[trade.orderID] = trade
+        self.orderDict[trade.orderID] = trade
 
         self.writeLog(u'成交信息查询完成')
 
@@ -591,6 +599,7 @@ class Api(vnhuobi.HuobiApi):
     # ----------------------------------------------------------------------
 
     def sendOrder(self, params):
+        self.lastOrderID = ''
         """发送委托"""
         timestamp = long(time.time())
         if params.symbol == BTC_CNY_SPOT:
@@ -618,11 +627,12 @@ class Api(vnhuobi.HuobiApi):
         self.orderCondition.wait()
         self.orderCondition.release()
         vtOrderID = '.'.join([self.gatewayName, self.lastOrderID])
-        self.lastOrderID = ''
+
         return vtOrderID
 
     # ----------------------------------------------------------------------
     def onSendOrder(self,data):
+        self.tradeFlag = True
         if data['result'] == 'success':
             self.lastOrderID= str(data['id'])
         # 收到委托号后，通知发送委托的线程返回委托号
