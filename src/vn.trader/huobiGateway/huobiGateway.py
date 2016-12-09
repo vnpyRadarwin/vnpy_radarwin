@@ -522,8 +522,9 @@ class Api(vnhuobi.HuobiApi):
         self.tradeFlag = False
         """查询最近的成交订单"""
         timestamp = long(time.time())
-        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
-                      "created": timestamp, "coin_type": 1, "method": 'get_new_deal_orders'}
+        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,"created": timestamp, "coin_type": 1, "id":self.lastOrderID,"method": 'order_info'}
+        # paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
+        #               "created": timestamp, "coin_type": 1, "method": 'get_new_deal_orders'}
         sign = signature(paramsDict)
         del paramsDict["secret_key"]
         paramsDict['sign'] = sign
@@ -534,7 +535,7 @@ class Api(vnhuobi.HuobiApi):
         """回调函数"""
         if len(data)==0:
             return
-        d=data[0]
+        d=data
         trade = VtTradeData()
         trade.gatewayName = self.gatewayName
 
@@ -542,16 +543,19 @@ class Api(vnhuobi.HuobiApi):
         trade.exchange = EXCHANGE_HUOBI
         trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
         trade.orderID = str(d['id'])
-
+        trade.tradeID=  str(d['id'])
         trade.direction, priceType = priceTypeMap[str(d['type'])]
         trade.offset = tradeTypeMap[str(d['type'])]
         #order.status = orderStatusMap[str(d['status'])]
 
-        trade.price = d['order_price']
+        #trade.price = d['order_price']
+        trade.price=d['processed_price']
+        trade.volume=float(d['processed_amount'])
         #order.volume = d['order_amount']
-        trade.orderTime = generateDateTimeStamp(d['order_time'])
+        #trade.orderTime = generateDateTimeStamp(d['order_time'])
 
         trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
+        trade.vtTradeID = '.'.join([self.gatewayName, trade.tradeID])
 
         self.gateway.onTrade(trade)
 
