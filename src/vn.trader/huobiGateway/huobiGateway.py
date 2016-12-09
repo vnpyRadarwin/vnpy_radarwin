@@ -632,9 +632,13 @@ class Api(vnhuobi.HuobiApi):
 
     # ----------------------------------------------------------------------
     def onSendOrder(self,data):
-        self.tradeFlag = True
-        if data['result'] == 'success':
-            self.lastOrderID= str(data['id'])
+
+        if 'result' in data:
+            if data['result'] == 'success':
+                self.lastOrderID= str(data['id'])
+                self.tradeFlag = True
+        else:
+            print data
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()
