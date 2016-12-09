@@ -4,6 +4,7 @@
 DATABASE_DQPT='DQPT'
 DATABASE_VNPY='VNPY'
 DATABASE_CLOUD='CLOUD'
+DATABASE_RW_TRADING='RW_TRADING'
 
 #--------------------------------------------------------------
 #火币网接口

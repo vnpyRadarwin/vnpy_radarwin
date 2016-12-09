@@ -40,36 +40,44 @@ def getPosition(params, positionDict, price, pos):
 # 断线重连机制
 
 #def reConnection(host,paramas=None,style='post',sleepTime=0.5,times=3):
-def reConnection(times,**kwargs):
-    result =None
-    error=None
-
-    if 'paramas' in kwargs:
-        try:
-            result=requests.post(kwargs['host'],kwargs['paramas'])
-        except Exception, e:
-            sleep(kwargs['sleepTime'])
-            times = times - 1
-            if times > 0:
-                reConnection(times, **kwargs)
-            else:
-                print "Account Info connectin fail"
-            error = e
-    else:
-        try:
-            result = requests.post(kwargs['host'])
-        except Exception, e:
-            sleep(kwargs['sleepTime'])
-            times = times - 1
-            if times > 0:
-                reConnection(times,**kwargs)
-            else:
-                print "Tick Data connectin fail"
-            error =e
-    return result,error
+# def reConnection_tick(times,**kwargs):
+#     result =None
+#     tickError=False
+#     print "reConnection_tick start"
+#     try:
+#         result = requests.post(kwargs['host'])
+#     except Exception, e:
+#         sleep(kwargs['sleepTime'])
+#         times = times - 1
+#         if times > 0:
+#             reConnection_tick(times,**kwargs)
+#         else:
+#             print "Tick Data connectin fail"
+#             tickError =True
+#     print "tickError:",tickError
+#     return result,tickError
+#
+# def reConnection_info(times,**kwargs):
+#
+#     result =None
+#     infoError=False
+#     if 'paramas' in kwargs:
+#         try:
+#             result=requests.post(kwargs['host'],kwargs['paramas'])
+#         except Exception, e:
+#             sleep(kwargs['sleepTime'])
+#             times = times - 1
+#             if times > 0:
+#                 reConnection_info(times, **kwargs)
+#             else:
+#                 print "Account Info connectin fail"
+#                 infoError = True
+#
+#     #print error
+#     return result,infoError
 
 if __name__ == '__main__':
-    result=reConnection(times=3,host='http://api.huobi.coms/staticmarket/ticker_btc_json.js',sleepTime=0.5)
+    result=reConnection_tick(times=3,host='http://api.huobi.coms/staticmarket/ticker_btc_json.js',sleepTime=0.5)
     #print result
 
  

@@ -38,6 +38,16 @@ class rwDbConnection(object):
             'cursorclass': pymysql.cursors.DictCursor
         }
 
+        self.config_rw_trading = {
+            "host": '10.10.10.180',
+            "user": 'rw_trading',
+            "password": 'Abcd1234',
+            "db": 'dqpt',
+            "port": 3306,
+            'charset': 'utf8mb4',
+            'cursorclass': pymysql.cursors.DictCursor
+        }
+
     # ----------------------------------------------------------------------
     def getMySqlData(self,query,params=None,dbFlag=DATABASE_DQPT):
 
@@ -45,6 +55,8 @@ class rwDbConnection(object):
             conn = pymysql.connect(**self.config_vnpy)
         elif dbFlag == DATABASE_CLOUD:
             conn = pymysql.connect(**self.config_cloud)
+        elif dbFlag == DATABASE_RW_TRADING:
+            conn = pymysql.connect(**self.config_rw_trading)
         else:
             conn = pymysql.connect(**self.config_dqpt)
         try:
