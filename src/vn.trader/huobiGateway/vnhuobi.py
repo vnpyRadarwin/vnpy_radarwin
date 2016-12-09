@@ -114,18 +114,24 @@ class HuobiApi(object):
         """处理请求队列中的请求"""
         while self.active:
             try:
+                error=False
                 req = self.reqQueue.get(block=True, timeout=1)  # 获取请求的阻塞为一秒
                 callback = req['callback']
                 r, error = self.processRequest(req)
+                if error:
+                     return
+
                 try:
                     if r.status_code == 200:
                         data = r.json()
-                        if self.DEBUG:
-                            print callback.__name__
                         callback(data)
                 except Exception, e:
-                    self.onError(str(e))
-                    return
+                    print "callback error:",callback
+                    if 'message' in data:
+                        print "error message:",data['message']
+
+                    #self.onError(str(e))
+
 
             except Empty:
                 pass
@@ -134,16 +140,26 @@ class HuobiApi(object):
 
     def processRequest(self, req):
         """发送请求并通过回调函数推送数据结果"""
-        reqParamas = req['params']
-        #payload = urllib.urlencode(params1)
 
-        #try:
-        #result1= requests.post(self.host, params=params1)
-        #print payload
-        result,error=reConnection(times=RECONNECTION_TIMES,host=self.host,paramas=reqParamas,sleepTime=RECONNECTION_SLEEPTIMES)
-        #except Exception, e:
-        #    error=e
-        return result,error
+        #result, infoError = reConnection_info(times=RECONNECTION_TIMES, host=self.host, paramas=reqParamas,sleepTime=RECONNECTION_SLEEPTIMES)
+        infoError = False
+        result=None
+        reqParamas = req['params']
+
+        payload = urllib.urlencode(reqParamas)
+
+        try:
+            result= requests.post(self.host, params=payload)
+
+        except Exception, e:
+             sleep(0.5)
+             try:
+                 result = requests.post(self.host, params=payload)
+             except Exception, e:
+                 print "Info Data Connect Fail"
+                 infoError = True
+
+        return result,infoError
 
     # ----------------------------------------------------------------------
 
@@ -170,23 +186,24 @@ class HuobiApi(object):
 
     def processRequestTicker(self, symbol,ticker):
         """实时数据请求"""
-        #try:
-        # 实时行情数据文件名
-        fileName = JSON_NAME % (ticker, symbol)
-        # 实时行情数据地址
-        tickerURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName
+        # result,tickError = reConnection_tick(times=RECONNECTION_TIMES,host=tickerURL,sleepTime=RECONNECTION_SLEEPTIMES)
+        tickError=False
+        result=None
+        try:
+            # 实时行情数据文件名
+            fileName = JSON_NAME % (ticker, symbol)
+            # 实时行情数据地址
+            tickerURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName
+            result = requests.post(tickerURL)
+        except Exception, e:
+             sleep(0.5)
+             try:
+                 result = requests.post(tickerURL)
+             except Exception, e:
+                 print "Tick Data Connect Fail"
+                 tickError = True
 
-        #result = requests.post(tickerURL)
-        result,error = reConnection(times=RECONNECTION_TIMES,host=tickerURL,sleepTime=RECONNECTION_SLEEPTIMES)
-        # except Exception, e:
-        #     sleep(0.5)
-        #     try:
-        #         result = requests.post(tickerURL)
-        #     except Exception, e:
-        #         print "Tick Data Connect Fail"
-        #         error = e
-
-        return result, error
+        return result, tickError
 
     # ----------------------------------------------------------------------
 
@@ -257,15 +274,19 @@ class HuobiApi(object):
         # 首先获取所有合约的代码
         while self.active:
             for symbol in self.spotTicker:
+                error =False
                 sleep(0.5)
                 r, error = self.processRequestTicker(symbol,'ticker')
+                if error:
+                    return
+
                 try:
                     if r.status_code == 200:
                         data = r.json()
                         self.onTicker(data)
                 except Exception,e:
-                    self.onError(str(e))
-                    return
+                    print "tick error:",data
+                    #self.onError(str(data))
 
                 # r, error = self.processRequestDepth(symbol,'depth')
                 # try:
