@@ -304,7 +304,7 @@ class Api(vnhuobi.HuobiApi):
         contract.priceTick = 0.01
 
         contractList.append(self.generateSpecificContract(contract, BTC_CNY_SPOT))
-        contractList.append(self.generateSpecificContract(contract, LTC_CNY_SPOT))
+        #contractList.append(self.generateSpecificContract(contract, LTC_CNY_SPOT))
 
         return contractList
 
