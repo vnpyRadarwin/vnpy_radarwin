@@ -9,62 +9,6 @@ import requests
 from threading import Thread
 from radarwinFunction.rwFunction import *
 
-# 账户货币代码
-
-# 电子货币代码
-
-# 行情深度
-
-
-# K线时间区间
-INTERVAL_1M = '1min'
-INTERVAL_3M = '3min'
-INTERVAL_5M = '5min'
-INTERVAL_15M = '15min'
-INTERVAL_30M = '30min'
-INTERVAL_1H = '1hour'
-INTERVAL_2H = '2hour'
-INTERVAL_4H = '4hour'
-INTERVAL_6H = '6hour'
-INTERVAL_1D = 'day'
-INTERVAL_3D = '3day'
-INTERVAL_1W = 'week'
-
-# 交易代码，需要后缀货币名才能完整
-TRADING_SYMBOL_BTC = 'btc_'
-TRADING_SYMBOL_LTC = 'ltc_'
-
-# 委托类型
-TYPE_BUY = 'buy'
-TYPE_SELL = 'sell'
-TYPE_BUY_MARKET = 'buy_market'
-TYPE_SELL_MARKET = 'sell_market'
-
-# 期货合约到期类型
-FUTURE_EXPIRY_THIS_WEEK = 'this_week'
-FUTURE_EXPIRY_NEXT_WEEK = 'next_week'
-FUTURE_EXPIRY_QUARTER = 'quarter'
-
-# 期货委托类型
-FUTURE_TYPE_LONG = 1
-FUTURE_TYPE_SHORT = 2
-FUTURE_TYPE_SELL = 3
-FUTURE_TYPE_COVER = 4
-
-# 期货是否用现价
-FUTURE_ORDER_MARKET = 1
-FUTURE_ORDER_LIMIT = 0
-
-# 期货杠杆
-FUTURE_LEVERAGE_10 = 10
-FUTURE_LEVERAGE_20 = 20
-
-# 委托状态
-ORDER_STATUS_NOTTRADED = 0
-ORDER_STATUS_PARTTRADED = 1
-ORDER_STATUS_ALLTRADED = 2
-ORDER_STATUS_CANCELLED = -1
-ORDER_STATUS_CANCELLING = 4
 
 HOST_URL='http://api.huobi.com'
 HOST_MARKET_CNY='staticmarket'
@@ -74,6 +18,11 @@ JSON_NAME='%s_%s_json.js'
 RECONNECTION_TIMES=3
 RECONNECTION_SLEEPTIMES=0.5
 
+#断线后重连间隔时间
+RECONNECTION_INTERVAL=3600
+
+#进程间间隔
+THREAD_INTERVAL=0.5
 
 ########################################################################
 class HuobiApi(object):
@@ -119,7 +68,9 @@ class HuobiApi(object):
                 callback = req['callback']
                 r, error = self.processRequest(req)
                 if error:
-                     return
+                    #1小时后在连接
+                    sleep(RECONNECTION_INTERVAL)
+                    continue
 
                 try:
                     if r.status_code == 200:
@@ -152,7 +103,7 @@ class HuobiApi(object):
             result= requests.post(self.host, params=payload)
 
         except Exception, e:
-             sleep(0.5)
+             sleep(THREAD_INTERVAL)
              try:
                  result = requests.post(self.host, params=payload)
              except Exception, e:
@@ -196,7 +147,7 @@ class HuobiApi(object):
             tickerURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName
             result = requests.post(tickerURL)
         except Exception, e:
-             sleep(0.5)
+             sleep(THREAD_INTERVAL)
              try:
                  result = requests.post(tickerURL)
              except Exception, e:
@@ -275,10 +226,12 @@ class HuobiApi(object):
         while self.active:
             for symbol in self.spotTicker:
                 error =False
-                sleep(0.5)
+                sleep(THREAD_INTERVAL)
                 r, error = self.processRequestTicker(symbol,'ticker')
                 if error:
-                    return
+                    # 1小时后在连接
+                    sleep(RECONNECTION_INTERVAL)
+                    break
 
                 try:
                     if r.status_code == 200:
