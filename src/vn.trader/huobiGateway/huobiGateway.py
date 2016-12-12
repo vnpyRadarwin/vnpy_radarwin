@@ -28,44 +28,15 @@ priceTypeMap['3'] = (DIRECTION_LONG, PRICETYPE_MARKETPRICE)
 priceTypeMap['4'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
 #priceTypeMapReverse = {v: k for k, v in priceTypeMap.items()}
 
-# 方向类型映射
-directionMap = {}
-directionMapReverse = {v: k for k, v in directionMap.items()}
-
-# 委托状态印射
-statusMap = {}
-statusMap[-1] = STATUS_CANCELLED
-statusMap[0] = STATUS_NOTTRADED
-statusMap[1] = STATUS_PARTTRADED
-statusMap[2] = STATUS_ALLTRADED
-statusMap[4] = STATUS_UNKNOWN
 
 ############################################
 ## 交易合约代码
 ############################################
 
-# USD
-BTC_USD_SPOT = 'BTC_USD_SPOT'
-BTC_USD_THISWEEK = 'BTC_USD_THISWEEK'
-BTC_USD_NEXTWEEK = 'BTC_USD_NEXTWEEK'
-BTC_USD_QUARTER = 'BTC_USD_QUARTER'
-
-LTC_USD_SPOT = 'LTC_USD_SPOT'
-LTC_USD_THISWEEK = 'LTC_USD_THISWEEK'
-LTC_USD_NEXTWEEK = 'LTC_USD_NEXTWEEK'
-LTC_USD_QUARTER = 'LTC_USD_QUARTER'
 
 # CNY
 BTC_CNY_SPOT = 'BTC_CNY_SPOT'
-LTC_CNY_SPOT = 'LTC_CNY_SPOT'
-
-# 印射字典
-spotSymbolMap = {}
-spotSymbolMap['ltc_usd'] = LTC_USD_SPOT
-spotSymbolMap['btc_usd'] = BTC_USD_SPOT
-spotSymbolMap['ltc_cny'] = LTC_CNY_SPOT
-spotSymbolMap['btc_cny'] = BTC_CNY_SPOT
-spotSymbolMapReverse = {v: k for k, v in spotSymbolMap.items()}
+#LTC_CNY_SPOT = 'LTC_CNY_SPOT'
 
 
 ############################################
@@ -77,7 +48,7 @@ channelSymbolMap = {}
 
 # CNY
 channelSymbolMap['btccny'] = BTC_CNY_SPOT
-channelSymbolMap['ltccny'] = LTC_CNY_SPOT
+#channelSymbolMap['ltccny'] = LTC_CNY_SPOT
 
 
 ############################################
@@ -95,11 +66,11 @@ RESPONSE_ASKS='asks'
 ############################################
 ## 持仓类型（BTC,LTC,CNY）
 ############################################
-SYMBOL_STYLE=['BTC','LTC','CNY']
+#SYMBOL_STYLE=['BTC','LTC','CNY']
 
 # 电子货币代码
 SYMBOL_BTC = 'btc'
-SYMBOL_LTC = 'ltc'
+#SYMBOL_LTC = 'ltc'
 
 
 ############################################
