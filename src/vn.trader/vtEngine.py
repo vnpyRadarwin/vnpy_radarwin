@@ -165,7 +165,7 @@ class MainEngine(object):
                 gateway = self.gatewayDict[gatewayName]
                 gateway.connect(stregeryNo)
             else:
-                self.writeLog(u'接口不存在：%s' % gatewayName)
+                self.writeLog(u'接口不存在 ：%s' % gatewayName)
     # 一个交易所多个账户 Radarwin add End
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq, gatewayName):
