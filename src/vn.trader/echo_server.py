@@ -10,22 +10,24 @@ def tcplink(sock, addr):
     print 'Accept new connection from %s:%s...' % addr
     sock.send('Welcome!')
     mainEngine = MainEngine()
-    mainEngine.ctaEngine.loadSetting()
+
     while True:
         data = sock.recv(1024)
         time.sleep(1)
         if data == 'exit' or not data:
             break
-        #sock.send('Hello, %s!' % data)
+        mainEngine.ctaEngine.rw_loadSetting(data)
         mainEngine.ctaEngine.initStrategy(data)
         mainEngine.ctaEngine.startStrategy(data)
+        sock.send("OK")
     sock.close()
-    print 'Connection from %s:%s closed.' % addr
+    #print 'Connection from %s:%s closed.' % addr
 
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # 监听端口:
 s.bind(('172.16.1.128', 9999))
+#s.bind(('localhost', 9999))
 s.listen(5)
 print 'Waiting for connection...'
 

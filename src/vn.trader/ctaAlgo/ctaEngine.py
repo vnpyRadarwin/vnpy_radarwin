@@ -28,8 +28,8 @@ from vtConstant import *
 from vtGateway import VtSubscribeReq, VtOrderReq, VtCancelOrderReq, VtLogData
 from vtFunction import todayDate
 
-from radarwinFunction.rwConstant import *
-from radarwinFunction.rwDbConnection import *
+from rwConstant import *
+from rwDbConnection import *
 
 ########################################################################
 class CtaEngine(object):
@@ -151,7 +151,8 @@ class CtaEngine(object):
         vtOrderID = self.mainEngine.sendOrder(req, contract.gatewayName)    # 发单
         self.orderStrategyDict[vtOrderID] = strategy        # 保存vtOrderID和策略的映射关系
 
-        self.writeCtaLog(u'策略%s发送委托，%s，%s，%s@%s' 
+        print (u'策略%s发送委托，%s，%s，%s@%s' %(strategy.name, vtSymbol, req.direction, volume, price))
+        self.writeCtaLog(u'策略%s发送委托，%s，%s，%s@%s'
                          %(strategy.name, vtSymbol, req.direction, volume, price))
         
         return vtOrderID
@@ -413,7 +414,7 @@ class CtaEngine(object):
                 #strategy = strategyClass(self, setting)
                 strategy=getattr(module, className)(self, setting)
             except Exception,e:
-                print "%s Class Not Found",name
+                print name," Class Not Found",
                 return
             # 通过反射获取类实例 Radarwin Modify End
             self.strategyDict[name] = strategy

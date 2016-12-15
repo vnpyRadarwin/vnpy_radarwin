@@ -1,5 +1,8 @@
 # encoding: UTF-8
 
+#Radarwin add Start
+import vtPath
+#Radarwin add End
 import shelve
 from collections import OrderedDict
 

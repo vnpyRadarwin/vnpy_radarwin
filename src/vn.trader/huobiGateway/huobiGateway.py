@@ -17,8 +17,8 @@ from threading import Condition
 
 import vnhuobi
 from vtGateway import *
-from radarwinFunction.rwConstant import *
-from radarwinFunction.rwDbConnection import *
+from rwConstant import *
+from rwDbConnection import *
 from time import localtime
 import talib as ta
 # 价格类型映射

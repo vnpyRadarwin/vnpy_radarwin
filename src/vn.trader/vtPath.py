@@ -17,7 +17,9 @@ MODULE_PATH = {}
 MODULE_PATH['CTA'] = os.path.join(ROOT_PATH, 'ctaAlgo')
 MODULE_PATH['RM'] = os.path.join(ROOT_PATH, 'riskManager')
 MODULE_PATH['DR'] = os.path.join(ROOT_PATH, 'dataRecorder')
-
+#radarwin目录路径添加 Radarwin add Start
+MODULE_PATH['RW'] = os.path.join(ROOT_PATH, 'radarwinFunction')
+#radarwin目录路径添加 Radarwin add End
 # 添加到环境变量中
 for path in MODULE_PATH.values():
     if path not in sys.path:

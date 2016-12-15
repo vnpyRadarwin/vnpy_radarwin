@@ -5,7 +5,9 @@ import os
 import ctypes
 import platform
 
-import vtPath
+#Radarwin del Start
+#import vtPath
+#Radarwin del End
 from vtEngine import MainEngine
 from uiMainWindow import *
 

@@ -7,7 +7,7 @@ from Queue import Queue,Empty
 import urllib
 import requests
 from threading import Thread
-from radarwinFunction.rwFunction import *
+from rwFunction import *
 
 
 HOST_URL='http://api.huobi.com'
