@@ -29,7 +29,7 @@ from vtGateway import VtSubscribeReq, VtOrderReq, VtCancelOrderReq, VtLogData
 from vtFunction import todayDate
 
 from radarwinFunction.rwConstant import *
-
+from radarwinFunction.rwDbConnection import *
 
 ########################################################################
 class CtaEngine(object):
@@ -80,6 +80,9 @@ class CtaEngine(object):
         self.registerEvent()
 
         self.positionDict={}
+
+        self.dbCon = rwDbConnection()
+
 
     #----------------------------------------------------------------------
     def sendOrder(self, vtSymbol, orderType, price, volume, strategy):
@@ -387,18 +390,32 @@ class CtaEngine(object):
             self.writeCtaLog(u'载入策略出错：%s' %e)
             return
         
+        #通过反射获取类实例 Radarwin Modify Start
         # 获取策略类
-        strategyClass = STRATEGY_CLASS.get(className, None)
-        if not strategyClass:
+        #strategyClass = STRATEGY_CLASS.get(className, None)
+
+        # if not strategyClass:
+        #     self.writeCtaLog(u'找不到策略类：%s' %className)
+        #     return
+        if not className:
             self.writeCtaLog(u'找不到策略类：%s' %className)
             return
+        # 通过反射获取类实例 Radarwin Modify End
         
         # 防止策略重名
         if name in self.strategyDict:
             self.writeCtaLog(u'策略实例重名：%s' %name)
         else:
             # 创建策略实例
-            strategy = strategyClass(self, setting)  
+            # 通过反射获取类实例 Radarwin Modify Start
+            try:
+                module = __import__(name)
+                #strategy = strategyClass(self, setting)
+                strategy=getattr(module, className)(self, setting)
+            except Exception,e:
+                print "%s Class Not Found",name
+                return
+            # 通过反射获取类实例 Radarwin Modify End
             self.strategyDict[name] = strategy
             
             # 保存Tick映射关系
@@ -488,14 +505,35 @@ class CtaEngine(object):
             f.write(jsonL)
     
     #----------------------------------------------------------------------
+    # 参数从数据库直接读取 Radarwin modify Start
     def loadSetting(self):
         """读取策略配置"""
-        with open(self.settingFileName) as f:
-            l = json.load(f)
-            
-            for setting in l:
-                self.loadStrategy(setting)
-    
+        # with open(self.settingFileName) as f:
+        #     l = json.load(f)
+        #
+        #     for setting in l:
+        #         self.loadStrategy(setting)
+
+        SQL = 'SELECT strategy_name as name , strategy_class as className,symbol as vtSymbol FROM strategy_master WHERE flag = 1'
+        data = self.dbCon.getMySqlData(SQL,dbFlag=DATABASE_VNPY)
+
+        setting = data[0]
+        self.loadStrategy(setting)
+    # 参数从数据库直接读取 Radarwin modify End
+    # ----------------------------------------------------------------------
+    #C/S模式启动策略函数 Radarwin add Start
+    def rw_loadSetting(self,stratgey):
+        self.mainEngine.connect_huobi('HUOBI', stratgey)
+        """读取策略配置"""
+        SQL='SELECT strategy_name as name , strategy_class as className,symbol as vtSymbol FROM strategy_master WHERE strategy_name = %s'
+        data = self.dbCon.getMySqlData(SQL, stratgey, DATABASE_VNPY)
+
+
+        #for setting in data:
+        setting=data[0]
+        self.loadStrategy(setting)
+
+    # C/S模式启动策略函数 Radarwin add End
     #----------------------------------------------------------------------
     def getStrategyVar(self, name):
         """获取策略当前的变量字典"""

@@ -48,7 +48,7 @@ class HuobiApi(object):
         #######################
 
     # ----------------------------------------------------------------------
-    def init(self, host, apiKey, secretKey, password,trace=False):
+    def init(self, host, apiKey, secretKey, password):
         """连接服务器"""
         self.host = host
         self.apiKey = apiKey

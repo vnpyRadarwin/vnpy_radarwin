@@ -18,6 +18,7 @@ from threading import Condition
 import vnhuobi
 from vtGateway import *
 from radarwinFunction.rwConstant import *
+from radarwinFunction.rwDbConnection import *
 from time import localtime
 import talib as ta
 # 价格类型映射
@@ -91,7 +92,7 @@ orderTypeMap = {}
 orderTypeMap['1'] = ORDER_TYPE_BUY
 orderTypeMap['2'] = ORDER_TYPE_SELL
 
-
+HUOBI_HOST="https://api.huobi.com/apiv3"
 ########################################################################
 class HuobiGateway(VtGateway):
     """Huobi接口"""
@@ -104,51 +105,58 @@ class HuobiGateway(VtGateway):
         self.api = Api(self)
         self.leverage = 0
         self.connected = False
-
+        self.dbCon = rwDbConnection()
         
     #----------------------------------------------------------------------
-    def connect(self):
+    def connect(self,strategyName=None):
         """连接"""
+        #非画面启动接口方式
+        if strategyName:
+            SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.strategy_name = %s'
+        # 画面启动接口
+        else:
+            SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.flag = 1'
+        data = self.dbCon.getMySqlData(SQL, strategyName, DATABASE_VNPY)
         # 载入json文件
         fileName = self.gatewayName + '_connect.json'
         path = os.path.abspath(os.path.dirname(__file__))
         fileName = os.path.join(path, fileName)
         
-        try:
-            f = file(fileName)
-        except IOError:
-            log = VtLogData()
-            log.gatewayName = self.gatewayName
-            log.logContent = u'读取连接配置出错，请检查'
-            self.onLog(log)
-            return
+        # try:
+        #     f = file(fileName)
+        # except IOError:
+        #     log = VtLogData()
+        #     log.gatewayName = self.gatewayName
+        #     log.logContent = u'读取连接配置出错，请检查'
+        #     self.onLog(log)
+        #     return
         
         # 解析json文件
-        setting = json.load(f)
+        #setting = json.load(f)
         try:
-            host = str(setting['host'])
-            apiKey = str(setting['apiKey'])
-            secretKey = str(setting['secretKey'])
-            trace = setting['trace']
-            leverage = setting['leverage']
-            password=setting['password']
+            data=data[0]
+            host = HUOBI_HOST
+            apiKey = str(data['apiKey'])
+            secretKey = str(data['secretKey'])
+            password=data['password']
         except KeyError:
             log = VtLogData()
             log.gatewayName = self.gatewayName
             log.logContent = u'连接配置缺少字段，请检查'
             self.onLog(log)
-            return            
-        
-        # 初始化接口
-        self.leverage = leverage
+            return
 
-        self.api.init(host, apiKey, secretKey, trace,password)
+
+        # 初始化接口
+        #self.leverage = leverage
+
+        self.api.init(host, apiKey, secretKey,password)
         
         log = VtLogData()
         log.gatewayName = self.gatewayName
         log.logContent = u'接口初始化成功'
         self.onLog(log)
-
+        #self.api.strategyName = HUOBI_ACC_STG[strategyNo]
         self.api.qryGenerateCnyContract()
 
         #self.api.getOrders()
@@ -275,6 +283,8 @@ class Api(vnhuobi.HuobiApi):
         #self.initCallback()
         self.tradeFlag=False
 
+        #self.strategyName=''
+
     #----------------------------------------------------------------------
     def qryInstruments(self):
             """查询合约"""
@@ -291,22 +301,7 @@ class Api(vnhuobi.HuobiApi):
         new.name = symbol
         return new
 
-        # ----------------------------------------------------------------------
-
-    def generateCnyContract(self):
-        """生成CNY合约信息"""
-        contractList = []
-
-        contract = VtContractData()
-        contract.exchange = EXCHANGE_HUOBI
-        contract.productClass = PRODUCT_SPOT
-        contract.size = 1
-        contract.priceTick = 0.01
-
-        contractList.append(self.generateSpecificContract(contract, BTC_CNY_SPOT))
-        #contractList.append(self.generateSpecificContract(contract, LTC_CNY_SPOT))
-
-        return contractList
+    # ----------------------------------------------------------------------
 
 
     def qryGenerateCnyContract(self):
@@ -374,7 +369,7 @@ class Api(vnhuobi.HuobiApi):
         contract.productClass = PRODUCT_SPOT
         contract.size = 1
         contract.priceTick = 0.01
-        
+        #contract.strategyName = self.strategyName
         contractList.append(self.generateSpecificContract(contract, BTC_CNY_SPOT))
 
         return contractList
