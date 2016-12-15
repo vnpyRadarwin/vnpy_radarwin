@@ -19,7 +19,7 @@ def tcplink(sock, addr):
         mainEngine.ctaEngine.loadSetting()
         mainEngine.ctaEngine.initStrategy(data)
         mainEngine.ctaEngine.startStrategy(data)
-        sock.send("OK")
+        sock.send("SEVER OK")
     sock.close()
     #print 'Connection from %s:%s closed.' % addr
 
