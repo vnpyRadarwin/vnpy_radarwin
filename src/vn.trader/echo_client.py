@@ -7,7 +7,8 @@ import socket
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # 建立连接:
-s.connect(('172.16.1.128', 9999))
+#s.connect(('172.16.1.128', 9998))
+s.connect(('localhost', 9999))
 # 接收欢迎消息:
 print s.recv(1024)
 for data in ['Bolling']:
