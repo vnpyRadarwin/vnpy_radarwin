@@ -507,32 +507,33 @@ class CtaEngine(object):
     
     #----------------------------------------------------------------------
     # 参数从数据库直接读取 Radarwin modify Start
-    def loadSetting(self):
+    #def loadSetting(self):
+    def loadSetting(self,stratgey=None):
         """读取策略配置"""
         # with open(self.settingFileName) as f:
         #     l = json.load(f)
         #
         #     for setting in l:
         #         self.loadStrategy(setting)
-
-        SQL = 'SELECT strategy_name as name , strategy_class as className,symbol as vtSymbol FROM strategy_master WHERE flag = 1'
-        data = self.dbCon.getMySqlData(SQL,dbFlag=DATABASE_VNPY)
+        if stratgey:
+            self.mainEngine.connect('HUOBI')
+        data = self.dbCon.getMySqlData(GET_STRATEGY_MASTER,dbFlag=DATABASE_VNPY)
 
         setting = data[0]
         self.loadStrategy(setting)
     # 参数从数据库直接读取 Radarwin modify End
     # ----------------------------------------------------------------------
     #C/S模式启动策略函数 Radarwin add Start
-    def rw_loadSetting(self,stratgey):
-        self.mainEngine.connect_huobi('HUOBI', stratgey)
-        """读取策略配置"""
-        SQL='SELECT strategy_name as name , strategy_class as className,symbol as vtSymbol FROM strategy_master WHERE strategy_name = %s'
-        data = self.dbCon.getMySqlData(SQL, stratgey, DATABASE_VNPY)
-
-
-        #for setting in data:
-        setting=data[0]
-        self.loadStrategy(setting)
+    # def rw_loadSetting(self,stratgey):
+    #     self.mainEngine.connect_huobi('HUOBI', stratgey)
+    #     """读取策略配置"""
+    #     SQL='SELECT strategy_name as name , strategy_class as className,symbol as vtSymbol FROM strategy_master WHERE strategy_name = %s'
+    #     data = self.dbCon.getMySqlData(SQL, stratgey, DATABASE_VNPY)
+    #
+    #
+    #     #for setting in data:
+    #     setting=data[0]
+    #     self.loadStrategy(setting)
 
     # C/S模式启动策略函数 Radarwin add End
     #----------------------------------------------------------------------

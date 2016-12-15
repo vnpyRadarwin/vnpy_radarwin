@@ -5,7 +5,7 @@ import time, socket, threading
 
 from vtEngine import MainEngine
 from radarwinFunction.rwDbConnection import *
-
+from radarwinFunction.rwConstant import *
 def tcplink(sock, addr):
     print 'Accept new connection from %s:%s...' % addr
     sock.send('Welcome!')
@@ -16,7 +16,7 @@ def tcplink(sock, addr):
         time.sleep(1)
         if data == 'exit' or not data:
             break
-        mainEngine.ctaEngine.rw_loadSetting(data)
+        mainEngine.ctaEngine.loadSetting()
         mainEngine.ctaEngine.initStrategy(data)
         mainEngine.ctaEngine.startStrategy(data)
         sock.send("OK")
@@ -27,11 +27,11 @@ def tcplink(sock, addr):
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 dbCon = rwDbConnection()
-SQL = 'SELECT strategy_name as name , port as port FROM strategy_master WHERE flag = 1'
-data = dbCon.getMySqlData(SQL, dbFlag=DATABASE_VNPY)
+#SQL = 'SELECT strategy_name as name , port as port FROM strategy_master WHERE flag = 1'
+data = dbCon.getMySqlData(GET_STRATEGY_MASTER, dbFlag=DATABASE_VNPY)
 stragety=data[0]
 # 监听端口:
-s.bind(('172.16.1.128', stragety['port']))
+s.bind((SERVER_HOST, stragety['port']))
 #s.bind(('localhost', stragety['port']))
 s.listen(5)
 print 'Waiting for connection...'

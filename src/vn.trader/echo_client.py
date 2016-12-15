@@ -9,11 +9,11 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # 建立连接:
 
 dbCon = rwDbConnection()
-SQL = 'SELECT strategy_name as name , port as port FROM strategy_master WHERE flag = 1'
-data = dbCon.getMySqlData(SQL, dbFlag=DATABASE_VNPY)
+#SQL = 'SELECT strategy_name as name , port as port FROM strategy_master WHERE flag = 1'
+data = dbCon.getMySqlData(GET_STRATEGY_MASTER, dbFlag=DATABASE_VNPY)
 stragety=data[0]
 
-s.connect(('172.16.1.128', stragety['port']))
+s.connect((SERVER_HOST, stragety['port']))
 #s.connect(('localhost', stragety['port']))
 # 接收欢迎消息:
 s.recv(1024)

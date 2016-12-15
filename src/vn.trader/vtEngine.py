@@ -159,17 +159,6 @@ class MainEngine(object):
             gateway.connect()
         else:
             self.writeLog(u'接口不存在：%s' %gatewayName)
-
-    # ----------------------------------------------------------------------
-    # 一个交易所多个账户 Radarwin add Start
-    def connect_huobi(self, gatewayName,stregeryNo):
-            """连接特定名称的接口"""
-            if gatewayName in self.gatewayDict:
-                gateway = self.gatewayDict[gatewayName]
-                gateway.connect(stregeryNo)
-            else:
-                self.writeLog(u'接口不存在 ：%s' % gatewayName)
-    # 一个交易所多个账户 Radarwin add End
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq, gatewayName):
         """订阅特定接口的行情"""

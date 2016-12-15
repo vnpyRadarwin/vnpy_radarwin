@@ -23,6 +23,11 @@ EXCHANGE_SYMBOL={'OKCOIN':['BTC','CNY'],
                 'HUOBI':['BTC','CNY']
                 }
 
+SERVER_HOST='172.16.1.128'
 #log输出文件名
 #LOGGER_FILE_NAME = '/home/owenpanhao/vnpy_project/log/atr_test_1.log'
 LOGGER_FILE_NAME = 'D:\\python_workspace\\log\\atr_test.log'
+
+#SQL
+#---------------------------------------------------------------------------
+GET_STRATEGY_MASTER = 'SELECT account_id as acid,strategy_name as name , strategy_class as className,symbol as vtSymbol,port as port FROM strategy_master WHERE flag = 1'

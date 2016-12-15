@@ -108,15 +108,15 @@ class HuobiGateway(VtGateway):
         self.dbCon = rwDbConnection()
         
     #----------------------------------------------------------------------
-    def connect(self,strategyName=None):
+    def connect(self):
         """连接"""
         #非画面启动接口方式
-        if strategyName:
-            SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.strategy_name = %s'
-        # 画面启动接口
-        else:
-            SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.flag = 1'
-        data = self.dbCon.getMySqlData(SQL, strategyName, DATABASE_VNPY)
+        # if strategyName:
+        #     SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.strategy_name = %s'
+        # # 画面启动接口
+        # else:
+        SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.flag = 1'
+        data = self.dbCon.getMySqlData(SQL,dbFlag=DATABASE_VNPY)
         # 载入json文件
         fileName = self.gatewayName + '_connect.json'
         path = os.path.abspath(os.path.dirname(__file__))
