@@ -8,48 +8,69 @@ class rwDbConnection(object):
 
     def __init__(self):
 
-        self.config_dqpt = {
-            'host': '172.16.1.116',
-            'user': 'rw_dqpt',
-            'password': 'Abcd1234',
-            'db': 'dqpt',
-            'port': 3306,
-            'charset': 'utf8mb4',
-            'cursorclass': pymysql.cursors.DictCursor
-        }
+        # self.config_dqpt = {
+        #     'host': '172.16.1.116',
+        #     'user': 'rw_dqpt',
+        #     'password': 'Abcd1234',
+        #     'db': 'dqpt',
+        #     'port': 3306,
+        #     'charset': 'utf8mb4',
+        #     'cursorclass': pymysql.cursors.DictCursor
+        # }
 
+        # self.config_cloud = {
+        #     "host": '56533bf41fb88.gz.cdb.myqcloud.com',
+        #     "user": 'radarwinBitrees',
+        #     "password": 'jDt63iDH72df3',
+        #     "db": 'bitrees',
+        #     "port": 14211,
+        #     'charset': 'utf8mb4',
+        #     'cursorclass': pymysql.cursors.DictCursor
+        # }
+
+        # self.config_vnpy = {
+        #     'host': '172.16.1.116',
+        #     'user': 'rw_vnpy',
+        #     'password': 'Abcd1234',
+        #     'db': 'vnpy',
+        #     'port': 3306,
+        #     'charset': 'utf8mb4',
+        #     'cursorclass': pymysql.cursors.DictCursor
+        # }
         self.config_vnpy = {
-            'host': '172.16.1.116',
+            'host': 'localhost',
             'user': 'rw_vnpy',
             'password': 'Abcd1234',
-            'db': 'vnpy',
+            'db': 'huotou_db',
             'port': 3306,
             'charset': 'utf8mb4',
             'cursorclass': pymysql.cursors.DictCursor
         }
 
-        self.config_cloud = {
-            "host": '56533bf41fb88.gz.cdb.myqcloud.com',
-            "user": 'radarwinBitrees',
-            "password": 'jDt63iDH72df3',
-            "db": 'bitrees',
-            "port": 14211,
-            'charset': 'utf8mb4',
-            'cursorclass': pymysql.cursors.DictCursor
-        }
+
+        # self.config_rw_trading = {
+        #     "host": '10.10.10.180',
+        #     "user": 'rw_trading',
+        #     "password": 'Abcd1234',
+        #     "db": 'dqpt',
+        #     "port": 3306,
+        #     'charset': 'utf8mb4',
+        #     'cursorclass': pymysql.cursors.DictCursor
+        # }
 
         self.config_rw_trading = {
-            "host": '10.10.10.180',
-            "user": 'rw_trading',
-            "password": 'Abcd1234',
-            "db": 'dqpt',
-            "port": 3306,
+            'host': 'radarwin.f3322.net',
+            'user': 'rw_dqpt',
+            'password': 'Rw12dqpt',
+            'db': 'dqpt',
+            'port': 6603,
             'charset': 'utf8mb4',
             'cursorclass': pymysql.cursors.DictCursor
-        }
+         }
+
 
     # ----------------------------------------------------------------------
-    def getMySqlData(self,query,params=None,dbFlag=DATABASE_DQPT):
+    def getMySqlData(self,query,params=None,dbFlag=DATABASE_VNPY):
 
         if dbFlag == DATABASE_VNPY:
             conn = pymysql.connect(**self.config_vnpy)
@@ -57,8 +78,8 @@ class rwDbConnection(object):
             conn = pymysql.connect(**self.config_cloud)
         elif dbFlag == DATABASE_RW_TRADING:
             conn = pymysql.connect(**self.config_rw_trading)
-        else:
-            conn = pymysql.connect(**self.config_dqpt)
+        # else:
+        #     conn = pymysql.connect(**self.config_dqpt)
         try:
             with conn.cursor() as cur:
                 cur.execute(query,params)
