@@ -20,7 +20,6 @@ from vtGateway import *
 from rwConstant import *
 from rwDbConnection import *
 from time import localtime
-import talib as ta
 # 价格类型映射
 priceTypeMap = {}
 priceTypeMap['1'] = (DIRECTION_LONG, PRICETYPE_LIMITPRICE)
@@ -101,12 +100,12 @@ class HuobiGateway(VtGateway):
     def __init__(self, eventEngine, gatewayName='HUOBI'):
         """Constructor"""
         super(HuobiGateway, self).__init__(eventEngine, gatewayName)
-        
+
         self.api = Api(self)
         self.leverage = 0
         self.connected = False
         self.dbCon = rwDbConnection()
-        
+
     #----------------------------------------------------------------------
     def connect(self):
         """连接"""
@@ -121,7 +120,7 @@ class HuobiGateway(VtGateway):
         fileName = self.gatewayName + '_connect.json'
         path = os.path.abspath(os.path.dirname(__file__))
         fileName = os.path.join(path, fileName)
-        
+
         # try:
         #     f = file(fileName)
         # except IOError:
@@ -130,7 +129,7 @@ class HuobiGateway(VtGateway):
         #     log.logContent = u'读取连接配置出错，请检查'
         #     self.onLog(log)
         #     return
-        
+
         # 解析json文件
         #setting = json.load(f)
         try:
@@ -151,7 +150,7 @@ class HuobiGateway(VtGateway):
         #self.leverage = leverage
 
         self.api.init(host, apiKey, secretKey,password)
-        
+
         log = VtLogData()
         log.gatewayName = self.gatewayName
         log.logContent = u'接口初始化成功'
@@ -171,22 +170,22 @@ class HuobiGateway(VtGateway):
         # 启动查询
         self.initQuery()
         #self.startQuery()
-    
+
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq):
         """订阅行情"""
         pass
-        
+
     #----------------------------------------------------------------------
     def cancelOrder(self, cancelOrderReq):
         """撤单"""
         self.api.cancelOrder(cancelOrderReq)
-        
+
     #----------------------------------------------------------------------
     def qryAccount(self):
         """查询账户资金"""
         self.api.spotUserInfo()
-        
+
     #----------------------------------------------------------------------
     def qryPosition(self):
         """查询持仓"""
@@ -211,7 +210,7 @@ class HuobiGateway(VtGateway):
     def close(self):
         """关闭"""
         pass
-        
+
     #----------------------------------------------------------------------
     def initQuery(self):
         """初始化连续查询"""
@@ -223,32 +222,32 @@ class HuobiGateway(VtGateway):
             self.qryCount = 0           # 查询触发倒计时
             self.qryTrigger = 2         # 查询触发点
             self.qryNextFunction = 0    # 上次运行的查询函数索引
-            
-            self.startQuery()  
-    
+
+            self.startQuery()
+
     #----------------------------------------------------------------------
     def query(self, event):
         """注册到事件处理引擎上的查询函数"""
         self.qryCount += 1
-        
+
         if self.qryCount > self.qryTrigger:
             # 清空倒计时
             self.qryCount = 0
-            
+
             # 执行查询函数
             function = self.qryFunctionList[self.qryNextFunction]
             function()
-            
+
             # 计算下次查询函数的索引，如果超过了列表长度，则重新设为0
             self.qryNextFunction += 1
             if self.qryNextFunction == len(self.qryFunctionList):
                 self.qryNextFunction = 0
-                
+
     #----------------------------------------------------------------------
     def startQuery(self):
         """启动连续查询"""
         self.eventEngine.register(EVENT_TIMER, self.query)
-    
+
     #----------------------------------------------------------------------
     def setQryEnabled(self, qryEnabled):
         """设置是否要启动循环查询"""
@@ -317,7 +316,7 @@ class Api(vnhuobi.HuobiApi):
         channel = data[RESPONSE_CHANNEL]
         callback = self.cbDict[channel]
         callback(data)
-        
+
     #----------------------------------------------------------------------
     def onError(self, evt):
         """错误推送"""
@@ -325,7 +324,7 @@ class Api(vnhuobi.HuobiApi):
         error.gatewayName = self.gatewayName
         error.errorMsg = str(evt)
         self.gateway.onError(error)
-        
+
     #----------------------------------------------------------------------
     def onClose(self, ws):
         """接口断开"""
@@ -343,7 +342,7 @@ class Api(vnhuobi.HuobiApi):
         log.gatewayName = self.gatewayName
         log.logContent = content
         self.gateway.onLog(log)
-        
+
     #----------------------------------------------------------------------
     def initCallback(self):
         """初始化回调函数"""
@@ -363,7 +362,7 @@ class Api(vnhuobi.HuobiApi):
     def generateCnyContract(self):
         """生成CNY合约信息"""
         contractList = []
-        
+
         contract = VtContractData()
         contract.exchange = EXCHANGE_HUOBI
         contract.productClass = PRODUCT_SPOT
