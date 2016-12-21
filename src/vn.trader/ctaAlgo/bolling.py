@@ -21,7 +21,6 @@ from radarwinFunction.rwConstant import *
 from radarwinFunction.rwLoggerFunction import *
 from radarwinFunction.rwFunction import *
 
-
 ########################################################################
 class Bolling(CtaTemplate):
     """布林带突破系统"""
@@ -31,11 +30,15 @@ class Bolling(CtaTemplate):
     # 策略参数
     bollingLength = 30
     atrFactor = 6
+    atsfactor = 6
     atrLength = 15  # 计算ATR指标的窗口数
     maLength = 20  # 计算A均线的窗口数
     trailingPercent = 0.2  # 百分比移动止损
     initDays = 50  # 初始化数据所用的天数
 
+    #账户资金变量
+    btcnum = 0
+    cnynum = 0
     # 策略变量
     bar = None  # K线对象
     barMinute = EMPTY_STRING  # K线当前的分钟
@@ -55,6 +58,7 @@ class Bolling(CtaTemplate):
     midLineArray = np.zeros(bufferSize)
     midLine = 0
     atrArray = np.zeros(bufferSize)
+    atsvalue = 0
     atrValue = 0
     trendMa = 0
     lasttrendMa = 0
@@ -71,6 +75,9 @@ class Bolling(CtaTemplate):
     lastpos = 0
     realtimeprice = 0
     direction = 0
+    buyresult = False
+    sellresult = False
+
     # 参数列表，保存了参数的名称
     paramList = ['name',
                  'className',
@@ -96,17 +103,19 @@ class Bolling(CtaTemplate):
                'intraTradeHigh',
                'intraTradeLow'
                ]
-    positionDict={}
+
     # ----------------------------------------------------------------------
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         super(Bolling, self).__init__(ctaEngine, setting)
         self.logger = rwLoggerFunction()
         self.dbCon = rwDbConnection()
+        self.positionDict = {}
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
         # 策略时方便（更多是个编程习惯的选择）
+
 
     # ----------------------------------------------------------------------
     def onInit(self):
@@ -117,10 +126,12 @@ class Bolling(CtaTemplate):
 
         # 载入历史数据，并采用回放计算的方式初始化策略数值
         initData = []
-        SQL = 'SELECT open,high,low,close,volumn,date FROM okcn_btc_cny_5 ORDER BY date DESC LIMIT 1,%s'
+        #SQL = 'SELECT open,high,low,close,volumn,date FROM okcn_btc_cny_1 ORDER BY date DESC LIMIT 1,%s'
+        SQL = 'SELECT opening_price,max_price,min_price,closing_price,volume_price,time_stamp FROM huobi_spot_btc_cny_aggregation_minute1 ORDER BY sequence DESC LIMIT 1,%s'
         params = [2]
 
-        data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_CLOUD)
+        data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_RW_TRADING)
+        '''
         for d in data[::-1]:
             bar = CtaBarData()
             bar.open = d['open']
@@ -131,6 +142,20 @@ class Bolling(CtaTemplate):
             bar.datetime=d['date']
             bar.date=d['date']
             bar.time = d['date']
+            bar.symbol = 'BTC_CNY_SPOT'
+            bar.vtSymbol = 'BTC_CNY_SPOT'
+            initData.append(bar)
+        '''
+        for d in data[::-1]:
+            bar = CtaBarData()
+            bar.open = d['opening_price']
+            bar.high = d['max_price']
+            bar.low = d['min_price']
+            bar.close = d['closing_price']
+            bar.volume = d['volume_price']
+            bar.datetime=d['time_stamp']
+            bar.date=d['time_stamp']
+            bar.time = d['time_stamp']
             bar.symbol = 'BTC_CNY_SPOT'
             bar.vtSymbol = 'BTC_CNY_SPOT'
             initData.append(bar)
@@ -199,10 +224,10 @@ class Bolling(CtaTemplate):
         # 计算K线
         tickMinute = tick.datetime.minute
         #print tickMinute , self.barMinute
+
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
         #if tickMinute != self.barMinute:    #一分钟
-        #getPosition("buy", self.positionDict, 5304, self.lots)
-        if ((tickMinute != self.barMinute and (tickMinute + 1) % 5 == 0) or not self.bar):  # 五分钟
+        if ((tickMinute != self.barMinute and (tickMinute+1) % 5 == 0) or not self.bar):  #五分钟
             if self.bar:
                 self.onBar(self.bar)
 
@@ -222,8 +247,8 @@ class Bolling(CtaTemplate):
 
             self.bar = bar  # 这种写法为了减少一层访问，加快速度
             self.barMinute = tickMinute  # 更新当前的分钟
-            print 'K线已更新，最近K线时间：',self.barMinute,tickMinute
-
+            print 'K线已更新，最近K线时间：',self.barMinute,bar.datetime,tickMinute
+            #print 'btc:',self.btcnum,'cny:',self.cnynum
         else:  # 否则继续累加新的K线
             bar = self.bar  # 写法同样为了加快速度
             bar.high = max(bar.high, tick.lastPrice)
@@ -231,6 +256,10 @@ class Bolling(CtaTemplate):
             bar.close = tick.lastPrice
             self.realtimeprice = bar.close  # 更新策略界面实时价格
 
+        # 查询账户信息，判断钱/币是否足够
+        self.buyresult = getPosition("buy", self.positionDict, bar.close + 1, self.lots)
+        self.sellresult = getPosition("sell", self.positionDict, bar.close - 1, self.lots)
+        #print self.buyresult, self.sellresult
         #持仓状态下判断出场
         if self.trading == True:
             if self.direction > 0 and self.pos > 0:
@@ -241,11 +270,10 @@ class Bolling(CtaTemplate):
                     self.signal = 0
                     self.entryPrice = 0
                     self.lasttradetype = 1
-                    result = getPosition("sell", self.positionDict, bar.close - 1, self.lots)
-                    if result:
-                        self.sell(bar.close - 1, self.lots)
-                    else:
-                        print "账户币不足，无法卖出"
+                    self.sell(bar.close - 1, self.lots)
+                   # if self.pos != 0:
+                     #   self.pos = 0
+
             if self.direction < 0 and self.pos < 0:
                 self.intraTradeLow = min(self.intraTradeLow, bar.low)
 
@@ -255,36 +283,38 @@ class Bolling(CtaTemplate):
                     self.signal = 0
                     self.entryPrice = 0
                     self.lasttradetype = -1
-                    result = getPosition("buy",self.positionDict,bar.close + 1, self.lots)
-                    if result:
-                        self.buy(bar.close + 1, self.lots)
-                    else:
-                        print "账户余额不足，无法买入"
-            # 判断是否开仓
-            if self.pos == 0 and self.direction == 0 and self.signal == 1 and bar.close > self.upLineArray[-1]:
+                    self.buy(bar.close + 1, self.lots)
+                   # if self.pos != 0 :
+                       # self.pos = 0
+
+
+
+            # 做多
+            if self.pos == 0 and  self.buyresult  and self.direction == 0 and self.signal == 1 and bar.close > self.upLineArray[-1]:
                 self.direction = 1
                 self.entryPrice = bar.close
                 self.shortStop = 0
                 self.intraTradeHigh = bar.close
                 self.intraTradeHigh = max(self.intraTradeHigh, bar.high)
                 self.lasttradetype = 1
-                result = getPosition("buy", self.positionDict, bar.close + 1, self.lots)
-                if result:
-                    self.buy(bar.close + 1, self.lots)
-                else:
-                    print "账户余额不足，无法买入"
-            if self.pos == 0 and self.direction == 0 and self.signal == -1 and bar.close < self.lowLineArray[-1]:
+                self.buy(bar.close+1, self.lots)
+                #if self.pos == 0:
+                   # self.pos = self.lots
+            elif self.pos == 0 and not self.buyresult:
+                print "账户余额不足，无法买入"
+            # 做空
+            if self.pos == 0 and self.sellresult  and self.direction == 0 and self.signal == -1 and bar.close < self.lowLineArray[-1]:
                 self.direction = -1
                 self.entryPrice = bar.close
                 self.longStop = 0
                 self.intraTradeLow = bar.close
                 self.intraTradeLow = min(self.intraTradeLow, bar.low)
                 self.lasttradetype = -1
-                result = getPosition("sell", self.positionDict, bar.close - 1, self.lots)
-                if result:
-                    self.sell(bar.close - 1, self.lots)
-                else:
-                    print "账户币不足，无法卖出"
+                self.sell(bar.close-1, self.lots)
+               # if self.pos == 0:
+                  #  self.pos = 0-self.lots
+            elif self.pos == 0 and not self.sellresult:
+                 print "账户币不足，无法卖出"
     # ----------------------------------------------------------------------
     def onBar(self, bar):
         """收到Bar推送（必须由用户继承实现）"""
@@ -304,9 +334,12 @@ class Bolling(CtaTemplate):
         self.typpArray =(self.closeArray+self.highArray+self.lowArray)/3
         self.typp = (bar.close+bar.high+bar.low)/3
         self.bufferCount += 1
+
         if self.bufferCount < self.bufferSize:
             print self.bufferCount, self.bufferSize
+            self.atsvalue = self.closeArray[-1]   # 初始化atrts
             return
+
 
         # 计算指标数值
         self.atrValue = talib.ATR(self.highArray,
@@ -316,6 +349,19 @@ class Bolling(CtaTemplate):
 
         self.atrArray[0:self.bufferSize - 1] = self.atrArray[1:self.bufferSize]
         self.atrArray[-1] = self.atrValue
+
+        if self.closeArray[-1] > self.atsvalue:
+            if self.closeArray[-2] < self.atsvalue:
+                self.atsvalue = self.closeArray[-1] - self.atsfactor * self.atrArray[-1]
+            else:
+                self.atsvalue = max(self.atsvalue,self.closeArray[-1] - self.atsfactor * self.atrArray[-1])
+        else:
+            if self.closeArray[-2] > self.atsvalue:
+                self.atsvalue = self.closeArray[-1] + self.atsfactor * self.atrArray[-1]
+            else:
+                self.atsvalue = min(self.atsvalue,self.closeArray[-1] + self.atsfactor * self.atrArray[-1])
+
+        #print self.atsvalue
         self.trendMaArray = talib.MA(self.typpArray,self.maLength)
         self.trendMa = self.trendMaArray[-1]
         self.lasttrendMa = self.trendMaArray[-2]
@@ -375,6 +421,9 @@ class Bolling(CtaTemplate):
                     self.signal = -1
                 else:
                     self.signal = 0
+
+        #self.onAccount()
+        #print self.buyresult, self.sellresult
         # 发出状态更新事件
         self.putEvent()
     # ----------------------------------------------------------------------
@@ -384,6 +433,7 @@ class Bolling(CtaTemplate):
         pass
 
     def onTrade(self, trade):
+        """收到成交变化推送（必须由用户继承实现）"""
         if self.direction == 0 :
             tradedirection = trade.direction.encode('utf-8') + '平'
         else :
@@ -391,14 +441,22 @@ class Bolling(CtaTemplate):
 
         value = [tradedirection, trade.price, trade.volume, self.intraTradeHigh, self.intraTradeLow, datetime.now(), self.lasttradetype, self.direction]
         sqlcontent = 'insert into ' + self.tablename + '(trade_type,price,volume,intrahigh,intralow,trade_time,lasttradetype,pos) values(%s,%s,%s,%s,%s,%s,%s,%s)'
-        self.dbCon.insUpdMySqlData(sqlcontent, value,dbFlag=DATABASE_TRADER)
+        #print  '价格：',trade.price
+        self.dbCon.insUpdMySqlData(sqlcontent, value,dbFlag=DATABASE_VNPY)
         pass
 
-    #------------------------------------------------------------------------
+    '''
     def onPosition(self,position):
-        self.positionDict=position
-
-
+        if position.symbol == 'btc':
+            self.btcnum = position.position
+            #print position.symbol,':',position.position
+        if position.symbol == 'cny':
+            self.cnynum = position.position
+            #print position.symbol,':',position.position
+        pass
+    '''
+    def onPosition(self,position):
+        self.positionDict = position
 
 
 if __name__ == '__main__':
