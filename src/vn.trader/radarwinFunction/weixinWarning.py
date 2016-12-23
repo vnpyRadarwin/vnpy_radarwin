@@ -15,6 +15,7 @@ def get_token():
 
 
 def send_msg(message):
+    print "send_msg"
     url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=" + get_token()
     values = """{"touser" : "1" ,
       "toparty":"1",
