@@ -19,6 +19,7 @@
 import json
 import os
 from collections import OrderedDict
+from copy import copy
 from datetime import datetime, timedelta
 
 from ctaBase import *
@@ -150,11 +151,12 @@ class CtaEngine(object):
         
         vtOrderID = self.mainEngine.sendOrder(req, contract.gatewayName)    # 发单
         self.orderStrategyDict[vtOrderID] = strategy        # 保存vtOrderID和策略的映射关系
-
-        print (u'策略%s发送委托，%s，%s，%s@%s' %(strategy.name, vtSymbol, req.direction, volume, price))
+        print vtOrderID
+        print "start:",vtSymbol
+        print (u'策略%s发送委托1，%s，%s，%s@%s' %(strategy.name, vtSymbol, req.direction, volume, price))
         self.writeCtaLog(u'策略%s发送委托，%s，%s，%s@%s'
-                         %(strategy.name, vtSymbol, req.direction, volume, price))
-        
+                           %(strategy.name, vtSymbol, req.direction, volume, price))
+        print "over:",vtSymbol
         return vtOrderID
     
     #----------------------------------------------------------------------
@@ -249,7 +251,6 @@ class CtaEngine(object):
         tick = event.dict_['data']
         # 收到tick行情后，先处理本地停止单（检查是否要立即发出）
         self.processStopOrder(tick)
-        
         # 推送tick到对应的策略实例进行处理
         if tick.vtSymbol in self.tickStrategyDict:
             # 将vtTickData数据转化为ctaTickData
@@ -260,7 +261,7 @@ class CtaEngine(object):
                     d[key] = tick.__getattribute__(key)
             # 添加datetime字段
             ctaTick.datetime = datetime.strptime(' '.join([tick.date, tick.time]), '%Y%m%d %H:%M:%S.%f')
-            
+
             # 逐个推送到策略实例中
             l = self.tickStrategyDict[tick.vtSymbol]
             for strategy in l:
@@ -329,9 +330,9 @@ class CtaEngine(object):
     def registerEvent(self):
         """注册事件监听"""
         self.eventEngine.register(EVENT_TICK, self.processTickEvent)
-        self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
-        self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
-        self.eventEngine.register(EVENT_POSITION, self.processPositionEvent)
+        #self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
+        #self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
+        #self.eventEngine.register(EVENT_POSITION, self.processPositionEvent)
  
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):
@@ -390,7 +391,7 @@ class CtaEngine(object):
         except Exception, e:
             self.writeCtaLog(u'载入策略出错：%s' %e)
             return
-        
+
         #通过反射获取类实例 Radarwin Modify Start
         # 获取策略类
         #strategyClass = STRATEGY_CLASS.get(className, None)
@@ -418,29 +419,51 @@ class CtaEngine(object):
                 return
             # 通过反射获取类实例 Radarwin Modify End
             self.strategyDict[name] = strategy
-            
+
+            for exSymbol in setting['exSymbol']:
+                if exSymbol in self.tickStrategyDict:
+                    l = self.tickStrategyDict[exSymbol]
+                else:
+                    l = []
+                    self.tickStrategyDict[setting['exSymbol'][exSymbol]] = l
+                l.append(strategy)
+
+                # 订阅合约
+                contract = self.mainEngine.getContract(exSymbol)
+                if contract:
+                    req = VtSubscribeReq()
+                    req.symbol = contract.symbol
+                    req.exchange = contract.exchange
+
+                    # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
+                    req.currency = strategy.currency
+                    req.productClass = strategy.productClass
+
+                    self.mainEngine.subscribe(req, contract.gatewayName)
+                else:
+                    self.writeCtaLog(u'%s的交易合约%s无法找到' % (name, strategy.vtSymbol))
             # 保存Tick映射关系
-            if strategy.vtSymbol in self.tickStrategyDict:
-                l = self.tickStrategyDict[strategy.vtSymbol]
-            else:
-                l = []
-                self.tickStrategyDict[strategy.vtSymbol] = l
-            l.append(strategy)
-            
-            # 订阅合约
-            contract = self.mainEngine.getContract(strategy.vtSymbol)
-            if contract:
-                req = VtSubscribeReq()
-                req.symbol = contract.symbol
-                req.exchange = contract.exchange
-                
-                # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
-                req.currency = strategy.currency
-                req.productClass = strategy.productClass
-                
-                self.mainEngine.subscribe(req, contract.gatewayName)
-            else:
-                self.writeCtaLog(u'%s的交易合约%s无法找到' %(name, strategy.vtSymbol))
+            # if strategy.vtSymbol in self.tickStrategyDict:
+            #     l = self.tickStrategyDict[strategy.vtSymbol]
+            # else:
+            #     l = []
+            #     self.tickStrategyDict[strategy.vtSymbol] = l
+            # l.append(strategy)
+            #
+            # # 订阅合约
+            # contract = self.mainEngine.getContract(strategy.vtSymbol)
+            # if contract:
+            #     req = VtSubscribeReq()
+            #     req.symbol = contract.symbol
+            #     req.exchange = contract.exchange
+            #
+            #     # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
+            #     req.currency = strategy.currency
+            #     req.productClass = strategy.productClass
+            #
+            #     self.mainEngine.subscribe(req, contract.gatewayName)
+            # else:
+            #     self.writeCtaLog(u'%s的交易合约%s无法找到' %(name, strategy.vtSymbol))
 
     #----------------------------------------------------------------------
     def initStrategy(self, name):
@@ -519,7 +542,14 @@ class CtaEngine(object):
             self.mainEngine.connect('HUOBI')
         data = self.dbCon.getMySqlData(GET_STRATEGY_MASTER,dbFlag=DATABASE_VNPY)
 
-        setting = data[0]
+        l = []
+        exSymbolDict={}
+        for d in data:
+            setting = copy(d)
+            exSymbolDict[d['exchange_name']]=str(d['exchange_name'])+"_"+str(d['vtSymbol'])
+            #l.append(str(d['exchange_name'])+"_"+str(d['vtSymbol']))
+        setting['exSymbol']=exSymbolDict
+
         self.loadStrategy(setting)
     # 参数从数据库直接读取 Radarwin modify End
     # ----------------------------------------------------------------------
