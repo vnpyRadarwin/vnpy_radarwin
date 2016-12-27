@@ -17,6 +17,8 @@ from ctaAlgo.ctaEngine import CtaEngine
 from dataRecorder.drEngine import DrEngine
 from riskManager.rmEngine import RmEngine
 
+from radarwinFunction.monitorEngine import MonitorEngine
+
 
 ########################################################################
 class MainEngine(object):
@@ -42,6 +44,8 @@ class MainEngine(object):
         self.ctaEngine = CtaEngine(self, self.eventEngine)
         self.drEngine = DrEngine(self, self.eventEngine)
         self.rmEngine = RmEngine(self, self.eventEngine)
+
+        self.monitorEngine = MonitorEngine(self, self.eventEngine)
         
     #----------------------------------------------------------------------
     def initGateway(self):

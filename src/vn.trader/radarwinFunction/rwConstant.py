@@ -28,6 +28,11 @@ SERVER_HOST='172.16.1.128'
 #LOGGER_FILE_NAME = '/home/owenpanhao/vnpy_project/log/atr_test_1.log'
 LOGGER_FILE_NAME = 'D:\\python_workspace\\log\\atr_test.log'
 
+CONNECTION_MARK='_'
+
 #SQL
 #---------------------------------------------------------------------------
-GET_STRATEGY_MASTER = 'SELECT account_id as acid,strategy_name as name , strategy_class as className,symbol as vtSymbol,port as port FROM strategy_master WHERE flag = 1'
+GET_STRATEGY_MASTER = 'SELECT sm.strategy_name as name , sm.strategy_class as className,sai.symbol as vtSymbol,ai.exchange_name as exchange_name FROM strategy_master sm,' \
+                      'strategy_account_info sai,account_info ai WHERE sm.strategy_id = sai.strategy_id and sai.account_id = ai.account_id and sm.flag = 1'
+
+GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai WHERE ai.exchange_name=%s and ai.flag = 1'

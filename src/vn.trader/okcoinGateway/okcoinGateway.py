@@ -17,6 +17,7 @@ from threading import Condition
 
 import vnokcoin
 from vtGateway import *
+from rwConstant import *
 
 # 价格类型映射
 priceTypeMap = {}
@@ -55,13 +56,13 @@ LTC_USD_QUARTER = 'LTC_USD_QUARTER'
 
 # CNY
 BTC_CNY_SPOT = 'BTC_CNY_SPOT'
-LTC_CNY_SPOT = 'LTC_CNY_SPOT'
+#LTC_CNY_SPOT = 'LTC_CNY_SPOT'
 
 # 印射字典
 spotSymbolMap = {}
-spotSymbolMap['ltc_usd'] = LTC_USD_SPOT
-spotSymbolMap['btc_usd'] = BTC_USD_SPOT
-spotSymbolMap['ltc_cny'] = LTC_CNY_SPOT
+#spotSymbolMap['ltc_usd'] = LTC_USD_SPOT
+#spotSymbolMap['btc_usd'] = BTC_USD_SPOT
+#spotSymbolMap['ltc_cny'] = LTC_CNY_SPOT
 spotSymbolMap['btc_cny'] = BTC_CNY_SPOT
 spotSymbolMapReverse = {v: k for k, v in spotSymbolMap.items()}
 
@@ -72,20 +73,20 @@ spotSymbolMapReverse = {v: k for k, v in spotSymbolMap.items()}
 channelSymbolMap = {}
 
 # USD
-channelSymbolMap['ok_sub_spotusd_btc_ticker'] = BTC_USD_SPOT
-channelSymbolMap['ok_sub_spotusd_ltc_ticker'] = LTC_USD_SPOT
-
-channelSymbolMap['ok_sub_spotusd_btc_depth_20'] = BTC_USD_SPOT
-channelSymbolMap['ok_sub_spotusd_ltc_depth_20'] = LTC_USD_SPOT
+# channelSymbolMap['ok_sub_spotusd_btc_ticker'] = BTC_USD_SPOT
+# channelSymbolMap['ok_sub_spotusd_ltc_ticker'] = LTC_USD_SPOT
+#
+# channelSymbolMap['ok_sub_spotusd_btc_depth_20'] = BTC_USD_SPOT
+# channelSymbolMap['ok_sub_spotusd_ltc_depth_20'] = LTC_USD_SPOT
 
 # CNY
 channelSymbolMap['ok_sub_spotcny_btc_ticker'] = BTC_CNY_SPOT
-channelSymbolMap['ok_sub_spotcny_ltc_ticker'] = LTC_CNY_SPOT
+#channelSymbolMap['ok_sub_spotcny_ltc_ticker'] = LTC_CNY_SPOT
 
 channelSymbolMap['ok_sub_spotcny_btc_depth_20'] = BTC_CNY_SPOT
-channelSymbolMap['ok_sub_spotcny_ltc_depth_20'] = LTC_CNY_SPOT
+#channelSymbolMap['ok_sub_spotcny_ltc_depth_20'] = LTC_CNY_SPOT
 
-
+EXCHANGE_NAME='OKCOIN'
 
 
 ########################################################################
@@ -359,15 +360,16 @@ class Api(vnokcoin.OkCoinApi):
         
         channel = data['channel']
         symbol = channelSymbolMap[channel]
-        
-        if symbol not in self.tickDict:
+        vtSymbol=EXCHANGE_NAME+"_"+symbol
+        if vtSymbol not in self.tickDict:
             tick = VtTickData()
-            tick.symbol = symbol
-            tick.vtSymbol = symbol
+            tick.symbol = vtSymbol
+            tick.vtSymbol = vtSymbol
             tick.gatewayName = self.gatewayName
-            self.tickDict[symbol] = tick
+            tick.exchange = EXCHANGE_NAME
+            self.tickDict[vtSymbol] = tick
         else:
-            tick = self.tickDict[symbol]
+            tick = self.tickDict[vtSymbol]
         
         rawData = data['data']
         tick.highPrice = float(rawData['high'])
@@ -387,15 +389,16 @@ class Api(vnokcoin.OkCoinApi):
         
         channel = data['channel']
         symbol = channelSymbolMap[channel]
-        
-        if symbol not in self.tickDict:
+        vtSymbol = EXCHANGE_NAME + "_" + symbol
+        if vtSymbol not in self.tickDict:
             tick = VtTickData()
-            tick.symbol = symbol
-            tick.vtSymbol = symbol
+            tick.symbol = vtSymbol
+            tick.vtSymbol = vtSymbol
             tick.gatewayName = self.gatewayName
-            self.tickDict[symbol] = tick
+
+            self.tickDict[vtSymbol] = tick
         else:
-            tick = self.tickDict[symbol]
+            tick = self.tickDict[vtSymbol]
         
         if 'data' not in data:
             return
@@ -424,7 +427,7 @@ class Api(vnokcoin.OkCoinApi):
         funds = rawData['info']['funds']
         
         # 持仓信息
-        for symbol in ['btc', 'ltc', self.currency]:
+        for symbol in ['btc', self.currency]:
             if symbol in funds['free']:
                 pos = VtPositionData()
                 pos.gatewayName = self.gatewayName
@@ -457,7 +460,7 @@ class Api(vnokcoin.OkCoinApi):
         info = rawData['info']
         
         # 持仓信息
-        for symbol in ['btc', 'ltc', self.currency]:
+        for symbol in ['btc', self.currency]:
             if symbol in info['free']:
                 pos = VtPositionData()
                 pos.gatewayName = self.gatewayName
@@ -563,7 +566,8 @@ class Api(vnokcoin.OkCoinApi):
         """生成合约"""
         new = copy(contract)
         new.symbol = symbol
-        new.vtSymbol = symbol
+        #new.vtSymbol = symbol
+        new.vtSymbol = contract.exchange+CONNECTION_MARK+symbol
         new.name = symbol
         return new
 
@@ -579,7 +583,7 @@ class Api(vnokcoin.OkCoinApi):
         contract.priceTick = 0.01
         
         contractList.append(self.generateSpecificContract(contract, BTC_CNY_SPOT))
-        contractList.append(self.generateSpecificContract(contract, LTC_CNY_SPOT))
+        #contractList.append(self.generateSpecificContract(contract, LTC_CNY_SPOT))
         
         return contractList
     
@@ -613,7 +617,9 @@ class Api(vnokcoin.OkCoinApi):
     #----------------------------------------------------------------------
     def onSpotTrade(self, data):
         """委托回报"""
+        print "rawData:", data
         rawData = data['data']
+
         self.lastOrderID = rawData['order_id']
         
         # 收到委托号后，通知发送委托的线程返回委托号
@@ -632,11 +638,14 @@ class Api(vnokcoin.OkCoinApi):
         symbol = spotSymbolMapReverse[req.symbol][:4]
         type_ = priceTypeMapReverse[(req.direction, req.priceType)]
         self.spotTrade(symbol, type_, str(req.price), str(req.volume))
-        
+        print "condition Start"
         # 等待发单回调推送委托号信息
         self.orderCondition.acquire()
+        print "condition Start1"
         self.orderCondition.wait()
+        print "condition Start2"
         self.orderCondition.release()
+        print "condition Start3"
         
         vtOrderID = '.'.join([self.gatewayName, self.lastOrderID])
         self.lastOrderID = ''

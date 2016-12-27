@@ -20,7 +20,7 @@ def send_msg(message):
     values = """{"touser" : "1" ,
       "toparty":"1",
       "msgtype":"text",
-      "agentid":"2",
+      "agentid":"4",
       "text":{
         "content": "%s"
       },

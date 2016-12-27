@@ -38,6 +38,7 @@ priceTypeMap['4'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
 BTC_CNY_SPOT = 'BTC_CNY_SPOT'
 #LTC_CNY_SPOT = 'LTC_CNY_SPOT'
 
+EXCHANGE_NAME = 'HUOBI'
 
 ############################################
 ## Channel和Symbol的印射
@@ -114,8 +115,8 @@ class HuobiGateway(VtGateway):
         #     SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.strategy_name = %s'
         # # 画面启动接口
         # else:
-        SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.flag = 1'
-        data = self.dbCon.getMySqlData(SQL,dbFlag=DATABASE_VNPY)
+        #SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.flag = 1'
+        data = self.dbCon.getMySqlData(GET_ACCOUNT_INFO,params='HUOBI',dbFlag=DATABASE_VNPY)
         # 载入json文件
         fileName = self.gatewayName + '_connect.json'
         path = os.path.abspath(os.path.dirname(__file__))
@@ -291,18 +292,6 @@ class Api(vnhuobi.HuobiApi):
             self.getInstruments(params)
 
     # ----------------------------------------------------------------------
-
-    def generateSpecificContract(self, contract, symbol):
-        """生成合约"""
-        new = copy(contract)
-        new.symbol = symbol
-        new.vtSymbol = symbol
-        new.name = symbol
-        return new
-
-    # ----------------------------------------------------------------------
-
-
     def qryGenerateCnyContract(self):
         l = self.generateCnyContract()
         for contract in l:
@@ -354,7 +343,8 @@ class Api(vnhuobi.HuobiApi):
         """生成合约"""
         new = copy(contract)
         new.symbol = symbol
-        new.vtSymbol = symbol
+        #new.vtSymbol = symbol
+        new.vtSymbol = EXCHANGE_NAME + CONNECTION_MARK + symbol
         new.name = symbol
         return new
 
@@ -364,7 +354,7 @@ class Api(vnhuobi.HuobiApi):
         contractList = []
 
         contract = VtContractData()
-        contract.exchange = EXCHANGE_HUOBI
+        contract.exchange = EXCHANGE_NAME
         contract.productClass = PRODUCT_SPOT
         contract.size = 1
         contract.priceTick = 0.01
@@ -386,20 +376,22 @@ class Api(vnhuobi.HuobiApi):
             return
         ticker = data['ticker']
         symbol = channelSymbolMap[ticker['symbol']]
-        if symbol not in self.tickDict:
+        vtSymbol= EXCHANGE_NAME+'_'+symbol
+        if vtSymbol not in self.tickDict:
             tick = VtTickData()
-            tick.symbol = symbol
-            tick.vtSymbol = symbol
+            tick.symbol = EXCHANGE_NAME+'_'+symbol
+            tick.vtSymbol = EXCHANGE_NAME+'_'+symbol
             tick.gatewayName = self.gatewayName
-            self.tickDict[symbol] = tick
+            tick.exchange=EXCHANGE_NAME
+            self.tickDict[vtSymbol] = tick
         else:
-            tick = self.tickDict[symbol]
+            tick = self.tickDict[vtSymbol]
 
         tick.highPrice = float(ticker['high'])
         tick.lowPrice = float(ticker['low'])
         tick.lastPrice = float(ticker['last'])
         tick.volume = float(ticker['vol'])
-        tick.date, tick.time = generateDateTime()
+        tick.date, tick.time = generateDateTime(data['time'])
 
         newtick = copy(tick)
         self.gateway.onTick(newtick)
@@ -607,7 +599,7 @@ class Api(vnhuobi.HuobiApi):
                 self.lastOrderID= str(data['id'])
                 self.tradeFlag = True
         else:
-            print data
+            print "test:",data['msg']
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()
@@ -678,9 +670,10 @@ class Api(vnhuobi.HuobiApi):
         pass
 
 
-def generateDateTime():
+def generateDateTime(s):
     """生成时间"""
-    dt = datetime.now()
+    dt = datetime.fromtimestamp(float(s))
+    #dt = datetime.now()
     time = dt.strftime("%H:%M:%S.%f")
     date = dt.strftime("%Y%m%d")
     return date, time

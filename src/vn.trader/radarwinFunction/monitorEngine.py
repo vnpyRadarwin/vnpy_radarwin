@@ -19,13 +19,14 @@ from threading import Thread, Condition
 
 from eventEngine import *
 from weixinWarning import *
+from rwDbConnection import *
 
 
 ########################################################################
 class MonitorEngine(object):
     """CTA策略引擎"""
     EVENT_MONITOR='eMonitor'
-    PRICE_DIFFERENC=3
+    PRICE_DIFFERENC=10
 
     #----------------------------------------------------------------------
     def __init__(self, mainEngine, eventEngine):
@@ -34,9 +35,10 @@ class MonitorEngine(object):
         self.eventEngine = eventEngine
         self.tickDict={}
         self.messageFlag=True
-        
+        self.dbCon = rwDbConnection()
         # 注册事件监听
         self.registerEvent()
+
         #self.reqThread = Thread(target=self.processQueue)
         #self.reqThread.start()
 
@@ -50,12 +52,17 @@ class MonitorEngine(object):
         self.tickDict[tick.gatewayName]=tick.lastPrice
         event = Event(type_=self.EVENT_MONITOR)
         event.dict_['data'] = self.tickDict
-        self.eventEngine.put(event)
+        self.processQueue(event)
+        #self.eventEngine.put(event)
         #print "processTickEvent:",self.tickDict
-        self.orderCondition = Condition()
+        #self.orderCondition = Condition()
 
     #----------------------------------------------------------------------
     def registerEvent(self):
+        data = self.dbCon.getMySqlData(GET_STRATEGY_MASTER, dbFlag=DATABASE_VNPY)
+        for d in data:
+            if d['name'] <> 'price_different_test':
+                return
         """注册事件监听"""
         self.eventEngine.register(EVENT_TICK, self.processTickEvent)
         self.eventEngine.register(self.EVENT_MONITOR, self.processQueue)
@@ -66,18 +73,16 @@ class MonitorEngine(object):
         if 'HUOBI' in tick and 'OKCOIN' in tick:
 
             if abs(tick['HUOBI']-tick['OKCOIN']) > self.PRICE_DIFFERENC:
-                print "yes:",abs(tick['HUOBI'] - tick['OKCOIN'])
+                print "yes:",tick['HUOBI'] ,tick['OKCOIN']
                 if self.messageFlag:
-                    sendMessage="套利执行："+str(abs(tick['HUOBI']-tick['OKCOIN']))
+                    sendMessage="套利执行："+str(abs(tick['HUOBI']-tick['OKCOIN']))+" 火币："+str(tick['HUOBI'])+" OKCOIN："+str(tick['OKCOIN'])
                     send_msg(sendMessage)
                     self.messageFlag=False
             else:
                 self.messageFlag = True
-                print 'no:',abs(tick['HUOBI'] - tick['OKCOIN'])
+                print 'no:',tick['HUOBI'] ,tick['OKCOIN']
 
         #print "processQueue:",tick['HUOBI'],tick['OKCOIN']
-
-
 
 
 class Event:
