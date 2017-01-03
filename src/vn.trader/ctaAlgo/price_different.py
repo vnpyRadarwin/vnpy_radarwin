@@ -284,7 +284,7 @@ class Price_Different(CtaTemplate_2):
             #价差大于设定值的时候
             if abs(huobi_lastprice-okcoin_lastprice) > self.priceDifferent:
 
-                #print "yes:",abs(huobi_lastprice-okcoin_lastprice)
+                print "yes:",abs(huobi_lastprice-okcoin_lastprice)
                 #print "self.messageFlag:",self.messageFlag
                 if self.messageFlag:
                     self.messageFlag = False
@@ -294,17 +294,14 @@ class Price_Different(CtaTemplate_2):
                         if sellResult and buyResult:
                             #huobi:sell , okcoin:buy
                             #self.vtSymbol=self.exSymbol['HUOBI']
-                            #self.sell(self.tickDict['HUOBI'].lastPrice-1, self.lots,'HUOBI')
+                            self.sell(self.tickDict['HUOBI'].lastPrice-10, self.lots,'HUOBI')
                             #self.vtSymbol = self.exSymbol['OKCOIN']
-                            #self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
+                            self.buy(self.tickDict['OKCOIN'].lastPrice+10, self.lots,'OKCOIN')
 
-                            #self.vtSymbol = self.exSymbol['HUOBI']
-                            #self.buy(self.tickDict['HUOBI'].lastPrice+1, self.lots,'HUOBI')
-                            # self.vtSymbol = self.exSymbol['OKCOIN']
-                            #self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
+
 
                             sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                            #print sendMessage
+                            print sendMessage
                         else:
                             print "钱币不足"
                     else:
@@ -314,21 +311,17 @@ class Price_Different(CtaTemplate_2):
                             # huobi:buy , okcoin:sell
 
                             #self.vtSymbol = self.exSymbol['HUOBI']
-                            #self.buy(self.tickDict['HUOBI'].lastPrice, self.lots)
+                            self.buy(self.tickDict['HUOBI'].lastPrice+10, self.lots,'HUOBI')
                             # self.vtSymbol = self.exSymbol['OKCOIN']
-                            #self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
+                            self.sell(self.tickDict['OKCOIN'].lastPrice-10, self.lots,'OKCOIN')
 
-                            #self.vtSymbol = self.exSymbol['HUOBI']
-                            #self.sell(self.tickDict['HUOBI'].lastPrice, self.lots)
-                            # self.vtSymbol = self.exSymbol['OKCOIN']
-                            #self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
                             sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                            #print sendMessage
+                            print sendMessage
                         else:
                             print "钱币不足"
             else:
                 self.messageFlag = True
-                #print 'no:',abs(huobi_lastprice-okcoin_lastprice)
+                print 'no:',abs(huobi_lastprice-okcoin_lastprice)
                     #print 'self.exSymbol:', self.exSymbol
 
 
