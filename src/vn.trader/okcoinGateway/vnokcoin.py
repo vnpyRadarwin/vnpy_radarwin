@@ -195,7 +195,7 @@ class OkCoinApi(object):
         
         # 使用json打包并发送
         j = json.dumps(d)
-        self.ws.send(j)        
+#        self.ws.send(j)
     
     #######################
     ## 现货相关

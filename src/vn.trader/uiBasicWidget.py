@@ -8,8 +8,10 @@ from collections import OrderedDict
 from PyQt4 import QtGui, QtCore
 
 from eventEngine import *
+from vtEngine import *
 from vtFunction import *
 from vtGateway import *
+from radarwinFunction.monitorEngine import MonitorEngine
 
 
 #----------------------------------------------------------------------
@@ -421,9 +423,10 @@ class MarketMonitor(BasicMonitor):
         d['gatewayName'] = {'chinese':u'接口', 'cellType':BasicCell}
         self.setHeaderDict(d)
         
-        # 设置数据键
-        self.setDataKey('vtSymbol')
-        
+        # 设置数据键 Radarwin
+        #self.setDataKey('vtSymbol')
+        self.setDataKey('gatewayName')
+
         # 设置监控事件类型
         self.setEventType(EVENT_TICK)
         
@@ -869,7 +872,10 @@ class TradingWidget(QtGui.QFrame):
         self.setLayout(vbox)
 
         # 关联更新
-        buttonSendOrder.clicked.connect(self.sendOrder)
+        #radarwin
+        #buttonSendOrder.clicked.connect(self.sendOrder)
+        buttonSendOrder.clicked.connect(self.rw_sendOrder)
+        # radarwin
         buttonCancelAll.clicked.connect(self.cancelAll)
         self.lineSymbol.returnPressed.connect(self.updateSymbol)
 
@@ -992,8 +998,8 @@ class TradingWidget(QtGui.QFrame):
         symbol = str(self.lineSymbol.text())
         exchange = unicode(self.comboExchange.currentText())
         currency = unicode(self.comboCurrency.currentText())
-        productClass = unicode(self.comboProductClass.currentText())           
-        gatewayName = unicode(self.comboGateway.currentText())        
+        productClass = unicode(self.comboProductClass.currentText())
+        gatewayName = unicode(self.comboGateway.currentText())
 
         # 查询合约
         if exchange:
@@ -1002,11 +1008,11 @@ class TradingWidget(QtGui.QFrame):
         else:
             vtSymbol = symbol
             contract = self.mainEngine.getContract(symbol)
-        
+
         if contract:
             gatewayName = contract.gatewayName
             exchange = contract.exchange    # 保证有交易所代码
-            
+
         req = VtOrderReq()
         req.symbol = symbol
         req.exchange = exchange
@@ -1018,9 +1024,13 @@ class TradingWidget(QtGui.QFrame):
         req.currency = currency
         req.productClass = productClass
         
+
         self.mainEngine.sendOrder(req, gatewayName)
-            
     #----------------------------------------------------------------------
+    def rw_sendOrder(self):
+
+        self.mainEngine.monitorEngine.sendOrder()
+    # ----------------------------------------------------------------------
     def cancelAll(self):
         """一键撤销所有委托"""
         l = self.mainEngine.getAllWorkingOrders()

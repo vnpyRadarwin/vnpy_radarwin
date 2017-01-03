@@ -29,6 +29,11 @@ class VtGateway(object):
         event2 = Event(type_=EVENT_TICK+tick.vtSymbol)
         event2.dict_['data'] = tick
         self.eventEngine.put(event2)
+
+        # Radarwin 特定接口的事件
+        event3 = Event(type_=EVENT_TICK + tick.gatewayName)
+        event3.dict_['data'] = tick
+        self.eventEngine.put(event3)
     
     #----------------------------------------------------------------------
     def onTrade(self, trade):
@@ -41,7 +46,12 @@ class VtGateway(object):
         # 特定合约的成交事件
         event2 = Event(type_=EVENT_TRADE+trade.vtSymbol)
         event2.dict_['data'] = trade
-        self.eventEngine.put(event2)        
+        self.eventEngine.put(event2)
+
+        # Radarwin 特定接口的事件
+        event3 = Event(type_=EVENT_TRADE + trade.gatewayName)
+        event3.dict_['data'] = trade
+        self.eventEngine.put(event3)
     
     #----------------------------------------------------------------------
     def onOrder(self, order):
@@ -55,6 +65,12 @@ class VtGateway(object):
         event2 = Event(type_=EVENT_ORDER+order.vtOrderID)
         event2.dict_['data'] = order
         self.eventEngine.put(event2)
+
+        # Radarwin 特定接口的事件
+        event3 = Event(type_=EVENT_ORDER + order.gatewayName)
+        event3.dict_['data'] = order
+        self.eventEngine.put(event3)
+
     
     #----------------------------------------------------------------------
     def onPosition(self, position):
@@ -68,6 +84,11 @@ class VtGateway(object):
         event2 = Event(type_=EVENT_POSITION+position.vtSymbol)
         event2.dict_['data'] = position
         self.eventEngine.put(event2)
+
+        # Radarwin 特定接口的事件
+        event3 = Event(type_=EVENT_POSITION+position.gatewayName)
+        event3.dict_['data'] = position
+        self.eventEngine.put(event3)
     
     #----------------------------------------------------------------------
     def onAccount(self, account):
@@ -81,7 +102,11 @@ class VtGateway(object):
         event2 = Event(type_=EVENT_ACCOUNT+account.vtAccountID)
         event2.dict_['data'] = account
         self.eventEngine.put(event2)
-    
+
+        # Radarwin 特定接口的事件
+        event3 = Event(type_=EVENT_ACCOUNT + account.gatewayName)
+        event3.dict_['data'] = account
+        self.eventEngine.put(event3)
     #----------------------------------------------------------------------
     def onError(self, error):
         """错误信息推送"""

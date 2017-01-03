@@ -32,137 +32,86 @@ from rwConstant import *
 from rwDbConnection import *
 
 ########################################################################
-class CtaEngine(object):
+class CtaEngine_2(object):
     """CTA策略引擎"""
     settingFileName = 'CTA_setting.json'
     path = os.path.abspath(os.path.dirname(__file__))
-    settingFileName = os.path.join(path, settingFileName)
+    settingFileName = os.path.join(path, settingFileName)      
 
     #----------------------------------------------------------------------
     def __init__(self, mainEngine, eventEngine):
         """Constructor"""
         self.mainEngine = mainEngine
         self.eventEngine = eventEngine
-
+        
         # 当前日期
         self.today = todayDate()
-
+        
         # 保存策略实例的字典
         # key为策略名称，value为策略实例，注意策略名称不允许重复
         self.strategyDict = {}
-
+        
         # 保存vtSymbol和策略实例映射的字典（用于推送tick数据）
         # 由于可能多个strategy交易同一个vtSymbol，因此key为vtSymbol
         # value为包含所有相关strategy对象的list
         self.tickStrategyDict = {}
-
+        
         # 保存vtOrderID和strategy对象映射的字典（用于推送order和trade数据）
         # key为vtOrderID，value为strategy对象
-        self.orderStrategyDict = {}
-
+        self.orderStrategyDict = {}     
+        
         # 本地停止单编号计数
         self.stopOrderCount = 0
         # stopOrderID = STOPORDERPREFIX + str(stopOrderCount)
-
+        
         # 本地停止单字典
         # key为stopOrderID，value为stopOrder对象
         self.stopOrderDict = {}             # 停止单撤销后不会从本字典中删除
         self.workingStopOrderDict = {}      # 停止单撤销后会从本字典中删除
-
+        
         # 持仓缓存字典
         # key为vtSymbol，value为PositionBuffer对象
         self.posBufferDict = {}
-
+        
         # 引擎类型为实盘
         self.engineType = ENGINETYPE_TRADING
-
+        
         # 注册事件监听
         self.registerEvent()
 
-        self.positionDict={}
-
+        self.positionDict_okcoin={}
+        self.positionDict_huobi={}
+        self.posGatwayDict_okcoin={}
+        self.posGatwayDict_huobi={}
         self.dbCon = rwDbConnection()
 
 
     #----------------------------------------------------------------------
-    def sendOrder(self, vtSymbol, orderType, price, volume, strategy):
+    def sendOrder(self, vtSymbol, orderType, price, volume, strategy,gatewayName):
         """发单"""
-        contract = self.mainEngine.getContract(vtSymbol)
 
+        
         req = VtOrderReq()
-        req.symbol = contract.symbol
-        req.exchange = contract.exchange
+        req.symbol = vtSymbol
+        req.direction = DIRECTION_SHORT
         req.price = price
         req.volume = volume
-
-        req.productClass = strategy.productClass
-        req.currency = strategy.currency
-
-        # 设计为CTA引擎发出的委托只允许使用限价单
-        req.priceType = PRICETYPE_LIMITPRICE
-
-        # CTA委托类型映射
-        if orderType == CTAORDER_BUY:
-            req.direction = DIRECTION_LONG
-            req.offset = OFFSET_OPEN
-
-        elif orderType == CTAORDER_SELL:
-            req.direction = DIRECTION_SHORT
-
-            # 只有上期所才要考虑平今平昨
-            if contract.exchange != EXCHANGE_SHFE:
-                req.offset = OFFSET_CLOSE
-            else:
-                # 获取持仓缓存数据
-                posBuffer = self.posBufferDict.get(vtSymbol, None)
-                # 如果获取持仓缓存失败，则默认平昨
-                if not posBuffer:
-                    req.offset = OFFSET_CLOSE
-                # 否则如果有多头今仓，则使用平今
-                elif posBuffer.longToday:
-                    req.offset= OFFSET_CLOSETODAY
-                # 其他情况使用平昨
-                else:
-                    req.offset = OFFSET_CLOSE
-
-        elif orderType == CTAORDER_SHORT:
-            req.direction = DIRECTION_SHORT
-            req.offset = OFFSET_OPEN
-
-        elif orderType == CTAORDER_COVER:
-            req.direction = DIRECTION_LONG
-
-            # 只有上期所才要考虑平今平昨
-            if contract.exchange != EXCHANGE_SHFE:
-                req.offset = OFFSET_CLOSE
-            else:
-                # 获取持仓缓存数据
-                posBuffer = self.posBufferDict.get(vtSymbol, None)
-                # 如果获取持仓缓存失败，则默认平昨
-                if not posBuffer:
-                    req.offset = OFFSET_CLOSE
-                # 否则如果有空头今仓，则使用平今
-                elif posBuffer.shortToday:
-                    req.offset= OFFSET_CLOSETODAY
-                # 其他情况使用平昨
-                else:
-                    req.offset = OFFSET_CLOSE
-
-        vtOrderID = self.mainEngine.sendOrder(req, contract.gatewayName)    # 发单
+        req.priceType = orderType
+        vtOrderID = self.mainEngine.sendOrder(req, gatewayName)    # 发单
         self.orderStrategyDict[vtOrderID] = strategy        # 保存vtOrderID和策略的映射关系
 
         print (u'策略%s发送委托，%s，%s，%s@%s' %(strategy.name, vtSymbol, req.direction, volume, price))
         self.writeCtaLog(u'策略%s发送委托，%s，%s，%s@%s'
                          %(strategy.name, vtSymbol, req.direction, volume, price))
-
+        
         return vtOrderID
-
+    
     #----------------------------------------------------------------------
     def cancelOrder(self, vtOrderID):
         """撤单"""
         # 查询报单对象
         order = self.mainEngine.getOrder(vtOrderID)
-
+        
         # 如果查询成功
         if order:
             # 检查是否报单还有效，只有有效时才发出撤单指令
@@ -174,14 +123,14 @@ class CtaEngine(object):
                 req.frontID = order.frontID
                 req.sessionID = order.sessionID
                 req.orderID = order.orderID
-                self.mainEngine.cancelOrder(req, order.gatewayName)
+                self.mainEngine.cancelOrder(req, order.gatewayName)    
 
     #----------------------------------------------------------------------
     def sendStopOrder(self, vtSymbol, orderType, price, volume, strategy):
         """发停止单（本地实现）"""
         self.stopOrderCount += 1
         stopOrderID = STOPORDERPREFIX + str(self.stopOrderCount)
-
+        
         so = StopOrder()
         so.vtSymbol = vtSymbol
         so.orderType = orderType
@@ -190,7 +139,7 @@ class CtaEngine(object):
         so.strategy = strategy
         so.stopOrderID = stopOrderID
         so.status = STOPORDER_WAITING
-
+        
         if orderType == CTAORDER_BUY:
             so.direction = DIRECTION_LONG
             so.offset = OFFSET_OPEN
@@ -202,14 +151,14 @@ class CtaEngine(object):
             so.offset = OFFSET_OPEN
         elif orderType == CTAORDER_COVER:
             so.direction = DIRECTION_LONG
-            so.offset = OFFSET_CLOSE
-
+            so.offset = OFFSET_CLOSE           
+        
         # 保存stopOrder对象到字典中
         self.stopOrderDict[stopOrderID] = so
         self.workingStopOrderDict[stopOrderID] = so
-
+        
         return stopOrderID
-
+    
     #----------------------------------------------------------------------
     def cancelStopOrder(self, stopOrderID):
         """撤销停止单"""
@@ -223,7 +172,7 @@ class CtaEngine(object):
     def processStopOrder(self, tick):
         """收到行情后处理本地停止单（检查是否要立即发出）"""
         vtSymbol = tick.vtSymbol
-
+        
         # 首先检查是否有策略交易该合约
         if vtSymbol in self.tickStrategyDict:
             # 遍历等待中的停止单，检查是否会被触发
@@ -231,14 +180,14 @@ class CtaEngine(object):
                 if so.vtSymbol == vtSymbol:
                     longTriggered = so.direction==DIRECTION_LONG and tick.lastPrice>=so.price        # 多头停止单被触发
                     shortTriggered = so.direction==DIRECTION_SHORT and tick.lastPrice<=so.price     # 空头停止单被触发
-
+                    
                     if longTriggered or shortTriggered:
                         # 买入和卖出分别以涨停跌停价发单（模拟市价单）
                         if so.direction==DIRECTION_LONG:
                             price = tick.upperLimit
                         else:
                             price = tick.lowerLimit
-
+                        
                         so.status = STOPORDER_TRIGGERED
                         self.sendOrder(so.vtSymbol, so.orderType, price, so.volume, so.strategy)
                         del self.workingStopOrderDict[so.stopOrderID]
@@ -249,7 +198,7 @@ class CtaEngine(object):
         tick = event.dict_['data']
         # 收到tick行情后，先处理本地停止单（检查是否要立即发出）
         self.processStopOrder(tick)
-
+        
         # 推送tick到对应的策略实例进行处理
         if tick.vtSymbol in self.tickStrategyDict:
             # 将vtTickData数据转化为ctaTickData
@@ -260,37 +209,37 @@ class CtaEngine(object):
                     d[key] = tick.__getattribute__(key)
             # 添加datetime字段
             ctaTick.datetime = datetime.strptime(' '.join([tick.date, tick.time]), '%Y%m%d %H:%M:%S.%f')
-
+            
             # 逐个推送到策略实例中
             l = self.tickStrategyDict[tick.vtSymbol]
             for strategy in l:
                 strategy.onTick(ctaTick)
-
+    
     #----------------------------------------------------------------------
     def processOrderEvent(self, event):
         """处理委托推送"""
         order = event.dict_['data']
-
+        
         if order.vtOrderID in self.orderStrategyDict:
-            strategy = self.orderStrategyDict[order.vtOrderID]
+            strategy = self.orderStrategyDict[order.vtOrderID]            
             strategy.onOrder(order)
-
+    
     #----------------------------------------------------------------------
     def processTradeEvent(self, event):
         """处理成交推送"""
         trade = event.dict_['data']
-
+        
         if trade.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[trade.vtOrderID]
-
+            
             # 计算策略持仓
             if trade.direction == DIRECTION_LONG:
                 strategy.pos += trade.volume
             else:
                 strategy.pos -= trade.volume
-
+            
             strategy.onTrade(trade)
-
+            
         # 更新持仓缓存数据
         if trade.vtSymbol in self.tickStrategyDict:
             posBuffer = self.posBufferDict.get(trade.vtSymbol, None)
@@ -298,22 +247,22 @@ class CtaEngine(object):
                 posBuffer = PositionBuffer()
                 posBuffer.vtSymbol = trade.vtSymbol
                 self.posBufferDict[trade.vtSymbol] = posBuffer
-            posBuffer.updateTradeData(trade)
-
+            posBuffer.updateTradeData(trade)            
+            
     #----------------------------------------------------------------------
-    def processPositionEvent(self, event):
+    def processPositionEvent_huobi(self, event):
         """处理持仓推送"""
         pos = event.dict_['data']
         # 账户信息推送  Radarwin add Start
         if pos.gatewayName in EXCHANGE_SYMBOL:
             if pos.vtSymbol.upper() in EXCHANGE_SYMBOL[pos.gatewayName]:
-                self.positionDict[pos.vtSymbol]=pos
-
-            if len(EXCHANGE_SYMBOL[pos.gatewayName])==len(self.positionDict):
+                self.positionDict_huobi[pos.vtSymbol]=pos
+            if len(EXCHANGE_SYMBOL[pos.gatewayName])==len(self.positionDict_huobi):
                 for name in self.strategyDict:
                     strategy = self.strategyDict[name]
-                    strategy.onPosition(self.positionDict)
-                self.positionDict={}
+                    self.posGatwayDict_huobi[pos.gatewayName]=self.positionDict_huobi
+                    strategy.onPosition(self.posGatwayDict_huobi)
+                #self.positionDict={}
         # 账户信息推送 Radarwin add End
 
         # 更新持仓缓存数据
@@ -325,53 +274,79 @@ class CtaEngine(object):
                 self.posBufferDict[pos.vtSymbol] = posBuffer
             posBuffer.updatePositionData(pos)
 
+    # ----------------------------------------------------------------------
+    def processPositionEvent_okcoin(self, event):
+        """处理持仓推送"""
+        pos = event.dict_['data']  # 账户信息推送  Radarwin add Start
+        if pos.gatewayName in EXCHANGE_SYMBOL:
+            if pos.vtSymbol.upper() in EXCHANGE_SYMBOL[pos.gatewayName]:
+                self.positionDict_okcoin[pos.vtSymbol] = pos
+
+            if len(EXCHANGE_SYMBOL[pos.gatewayName]) == len(self.positionDict_okcoin):
+                for name in self.strategyDict:
+                    strategy = self.strategyDict[name]
+                    self.posGatwayDict_okcoin[pos.gatewayName] = self.positionDict_okcoin
+                    strategy.onPosition(self.posGatwayDict_okcoin)
+                #self.positionDict = {}
+        # 账户信息推送 Radarwin add End
+
+        # 更新持仓缓存数据
+        if pos.vtSymbol in self.tickStrategyDict:
+            posBuffer = self.posBufferDict.get(pos.vtSymbol, None)
+            if not posBuffer:
+                posBuffer = PositionBuffer()
+                posBuffer.vtSymbol = pos.vtSymbol
+                self.posBufferDict[pos.vtSymbol] = posBuffer
+            posBuffer.updatePositionData(pos)
+    
     #----------------------------------------------------------------------
     def registerEvent(self):
         """注册事件监听"""
         self.eventEngine.register(EVENT_TICK, self.processTickEvent)
-        self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
-        self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
-        self.eventEngine.register(EVENT_POSITION, self.processPositionEvent)
-
+        #self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
+        #self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
+        self.eventEngine.register(EVENT_POSITION+"HUOBI", self.processPositionEvent_huobi)
+        self.eventEngine.register(EVENT_POSITION + "OKCOIN", self.processPositionEvent_okcoin)
+ 
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):
         """插入数据到数据库（这里的data可以是CtaTickData或者CtaBarData）"""
         self.mainEngine.dbInsert(dbName, collectionName, data.__dict__)
-
+    
     #----------------------------------------------------------------------
     def loadBar(self, dbName, collectionName, days):
         """从数据库中读取Bar数据，startDate是datetime对象"""
         startDate = self.today - timedelta(days)
-
+        
         d = {'datetime':{'$gte':startDate}}
         cursor = self.mainEngine.dbQuery(dbName, collectionName, d)
-
+        
         l = []
         if cursor:
             for d in cursor:
                 bar = CtaBarData()
                 bar.__dict__ = d
                 l.append(bar)
-
+            
         return l
-
+    
     #----------------------------------------------------------------------
     def loadTick(self, dbName, collectionName, days):
         """从数据库中读取Tick数据，startDate是datetime对象"""
         startDate = self.today - timedelta(days)
-
+        
         d = {'datetime':{'$gte':startDate}}
         cursor = self.mainEngine.dbQuery(dbName, collectionName, d)
-
+        
         l = []
         if cursor:
             for d in cursor:
                 tick = CtaTickData()
                 tick.__dict__ = d
                 l.append(tick)
-
-        return l
-
+        
+        return l    
+    
     #----------------------------------------------------------------------
     def writeCtaLog(self, content):
         """快速发出CTA模块日志事件"""
@@ -379,8 +354,8 @@ class CtaEngine(object):
         log.logContent = content
         event = Event(type_=EVENT_CTA_LOG)
         event.dict_['data'] = log
-        self.eventEngine.put(event)
-
+        self.eventEngine.put(event)   
+    
     #----------------------------------------------------------------------
     def loadStrategy(self, setting):
         """载入策略"""
@@ -390,7 +365,7 @@ class CtaEngine(object):
         except Exception, e:
             self.writeCtaLog(u'载入策略出错：%s' %e)
             return
-
+        
         #通过反射获取类实例 Radarwin Modify Start
         # 获取策略类
         #strategyClass = STRATEGY_CLASS.get(className, None)
@@ -402,7 +377,7 @@ class CtaEngine(object):
             self.writeCtaLog(u'找不到策略类：%s' %className)
             return
         # 通过反射获取类实例 Radarwin Modify End
-
+        
         # 防止策略重名
         if name in self.strategyDict:
             self.writeCtaLog(u'策略实例重名：%s' %name)
@@ -418,7 +393,7 @@ class CtaEngine(object):
                 return
             # 通过反射获取类实例 Radarwin Modify End
             self.strategyDict[name] = strategy
-
+            
             # 保存Tick映射关系
             if strategy.vtSymbol in self.tickStrategyDict:
                 l = self.tickStrategyDict[strategy.vtSymbol]
@@ -426,18 +401,18 @@ class CtaEngine(object):
                 l = []
                 self.tickStrategyDict[strategy.vtSymbol] = l
             l.append(strategy)
-
+            
             # 订阅合约
             contract = self.mainEngine.getContract(strategy.vtSymbol)
             if contract:
                 req = VtSubscribeReq()
                 req.symbol = contract.symbol
                 req.exchange = contract.exchange
-
+                
                 # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
                 req.currency = strategy.currency
                 req.productClass = strategy.productClass
-
+                
                 self.mainEngine.subscribe(req, contract.gatewayName)
             else:
                 self.writeCtaLog(u'%s的交易合约%s无法找到' %(name, strategy.vtSymbol))
@@ -447,64 +422,64 @@ class CtaEngine(object):
         """初始化策略"""
         if name in self.strategyDict:
             strategy = self.strategyDict[name]
-
+            
             if not strategy.inited:
                 strategy.inited = True
                 strategy.onInit()
             else:
                 self.writeCtaLog(u'请勿重复初始化策略实例：%s' %name)
         else:
-            self.writeCtaLog(u'策略实例不存在：%s' %name)
+            self.writeCtaLog(u'策略实例不存在：%s' %name)        
 
     #---------------------------------------------------------------------
     def startStrategy(self, name):
         """启动策略"""
         if name in self.strategyDict:
             strategy = self.strategyDict[name]
-
+            
             if strategy.inited and not strategy.trading:
                 strategy.trading = True
                 strategy.onStart()
         else:
             self.writeCtaLog(u'策略实例不存在：%s' %name)
-
+    
     #----------------------------------------------------------------------
     def stopStrategy(self, name):
         """停止策略"""
         if name in self.strategyDict:
             strategy = self.strategyDict[name]
-
+            
             if strategy.trading:
                 strategy.trading = False
                 strategy.onStop()
-
+                
                 # 对该策略发出的所有限价单进行撤单
                 for vtOrderID, s in self.orderStrategyDict.items():
                     if s is strategy:
                         self.cancelOrder(vtOrderID)
-
+                
                 # 对该策略发出的所有本地停止单撤单
                 for stopOrderID, so in self.workingStopOrderDict.items():
                     if so.strategy is strategy:
-                        self.cancelStopOrder(stopOrderID)
+                        self.cancelStopOrder(stopOrderID)   
         else:
-            self.writeCtaLog(u'策略实例不存在：%s' %name)
-
+            self.writeCtaLog(u'策略实例不存在：%s' %name)        
+    
     #----------------------------------------------------------------------
     def saveSetting(self):
         """保存策略配置"""
         with open(self.settingFileName, 'w') as f:
             l = []
-
+            
             for strategy in self.strategyDict.values():
                 setting = {}
                 for param in strategy.paramList:
                     setting[param] = strategy.__getattribute__(param)
                 l.append(setting)
-
+            
             jsonL = json.dumps(l, indent=4)
             f.write(jsonL)
-
+    
     #----------------------------------------------------------------------
     # 参数从数据库直接读取 Radarwin modify Start
     #def loadSetting(self):

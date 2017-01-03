@@ -93,6 +93,7 @@ class CtaTickData(object):
         self.vtSymbol = EMPTY_STRING            # vt系统代码
         self.symbol = EMPTY_STRING              # 合约代码
         self.exchange = EMPTY_STRING            # 交易所代码
+        self.gatewayName = EMPTY_STRING         # 接口
 
         # 成交数据
         self.lastPrice = EMPTY_FLOAT            # 最新成交价

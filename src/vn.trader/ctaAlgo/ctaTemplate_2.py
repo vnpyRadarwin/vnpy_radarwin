@@ -6,12 +6,10 @@
 
 from ctaBase import *
 from vtConstant import *
-import logging
-import numpy as np
-import pymysql
-import datetime
+
+
 ########################################################################
-class CtaTemplate(object):
+class CtaTemplate_2(object):
     """CTA策略模板"""
     
     # 策略类的名称和作者
@@ -21,14 +19,7 @@ class CtaTemplate(object):
     # MongoDB数据库的名称，K线数据库默认为1分钟
     tickDbName = TICK_DB_NAME
     barDbName = MINUTE_DB_NAME
-
-    #mysql数据库参数
-    host = EMPTY_STRING
-    user = EMPTY_STRING
-    passwd = EMPTY_STRING
-    db = EMPTY_STRING
-    port = EMPTY_INT
-    tablename = EMPTY_STRING
+    
     # 策略的基本参数
     name = EMPTY_UNICODE           # 策略实例名称
     vtSymbol = EMPTY_STRING        # 交易的合约vt系统代码    
@@ -50,24 +41,12 @@ class CtaTemplate(object):
     varList = ['inited',
                'trading',
                'pos']
-    # ----------------------------------------------------------------------
-    # 以下为自定义添加内容，记录log用
-    logger = logging.getLogger("loggingmodule.NomalLogger")
-    #handler = logging.FileHandler("D:/python_workspace/log/atr_test.log")
-    handler = logging.FileHandler("/home/owenpanhao/vnpy_project/log/atr_test.log")
-    formatter = logging.Formatter("[%(levelname)s][%(funcName)s][%(asctime)s]%(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-    # ----------------------------------------------------------------------
-    # 以下为自定义添加内容，读取mysql的配置
-    conn = pymysql.connect(host='56533bf41fb88.gz.cdb.myqcloud.com', user='radarwinBitrees', passwd='jDt63iDH72df3',
-                           db='bitrees', port=14211)
-    cur = conn.cursor()
+
     #----------------------------------------------------------------------
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         self.ctaEngine = ctaEngine
+
         # 设置策略的参数
         if setting:
             d = self.__dict__
@@ -111,34 +90,34 @@ class CtaTemplate(object):
         raise NotImplementedError
     
     #----------------------------------------------------------------------
-    def buy(self, price, volume, stop=False):
+    def buy(self, price, volume, gatewayName,stop=False):
         """买开"""
-        return self.sendOrder(CTAORDER_BUY, price, volume, stop)
-    
+        return self.sendOrder(CTAORDER_BUY, price, volume,gatewayName, stop)
+
     #----------------------------------------------------------------------
-    def sell(self, price, volume, stop=False):
+    def sell(self, price, volume,gatewayName, stop=False):
         """卖平"""
-        return self.sendOrder(CTAORDER_SELL, price, volume, stop)       
+        return self.sendOrder(CTAORDER_SELL, price, volume, gatewayName,stop)
 
     #----------------------------------------------------------------------
     def short(self, price, volume, stop=False):
         """卖开"""
-        return self.sendOrder(CTAORDER_SHORT, price, volume, stop)          
- 
+        return self.sendOrder(CTAORDER_SHORT, price, volume, stop)
+
     #----------------------------------------------------------------------
     def cover(self, price, volume, stop=False):
         """买平"""
         return self.sendOrder(CTAORDER_COVER, price, volume, stop)
-        
+
     #----------------------------------------------------------------------
-    def sendOrder(self, orderType, price, volume, stop=False):
+    def sendOrder(self, orderType, price, volume, gatewayName,stop=False):
         """发送委托"""
         if self.trading:
             # 如果stop为True，则意味着发本地停止单
             if stop:
-                vtOrderID = self.ctaEngine.sendStopOrder(self.vtSymbol, orderType, price, volume, self)
+                vtOrderID = self.ctaEngine.sendStopOrder(self.vtSymbol, orderType, price, volume, self,gatewayName)
             else:
-                vtOrderID = self.ctaEngine.sendOrder(self.vtSymbol, orderType, price, volume, self) 
+                vtOrderID = self.ctaEngine.sendOrder(self.vtSymbol, orderType, price, volume, self,gatewayName)
             return vtOrderID
         else:
             # 交易停止时发单返回空字符串
@@ -186,77 +165,9 @@ class CtaTemplate(object):
     def putEvent(self):
         """发出策略状态变化事件"""
         self.ctaEngine.putStrategyEvent(self.name)
+        
     #----------------------------------------------------------------------
-    def log(self,info):
-        '''记录log'''
-        self.logger.info(info)
-    # ----------------------------------------------------------------------
-    # def loadbitressdata(self,backday):
-    #     self.cur.execute(
-    #         'SELECT open,high,low,close,volumn,date FROM okcn_btc_cny_1 ORDER BY date DESC LIMIT 1,%d' % backday)
-    #     data = self.cur.fetchall()
-    #     datalength = len(data)
-    #     l = []
-    #     if self.cur:
-    #         for d in range(datalength)[::-1]:
-    #             bar = CtaBarData()
-    #             bar.open = data[d][0]
-    #             bar.high = data[d][1]
-    #             bar.low = data[d][2]
-    #             bar.close = data[d][3]
-    #             bar.volume = data[d][4]
-    #             bar.datetime = data[d][5]
-    #             bar.date = data[d][5]
-    #             bar.time = data[d][5]
-    #             bar.symbol = 'BTC_CNY_SPOT'
-    #             bar.vtSymbol = 'BTC_CNY_SPOT'
-    #             l.append(bar)
-    #     return l
-
-    def getperioddata(self,date,type):
-        sqlcontent = 'SELECT high,low,DATE FROM okcn_btc_cny_1  WHERE DATE > '+'\''+str(date)+'\''+' ORDER BY DATE DESC'
-        self.cur.execute(sqlcontent)
-        data = self.cur.fetchall()
-        high = []
-        low = []
-        date = []
-        if self.cur:
-            for i in data[::-1]:
-                high.append(i[0])
-                low.append(i[1])
-                date.append(i[2])
-        if type == 'high':
-            return max(high)
-        if type == 'low':
-            return min(low)
-
-
-
-
-    def writetradelog2mysql(self,value):
-        conn = pymysql.connect(host=self.host,user=self.user,passwd=self.passwd,db=self.db,port=self.port)
-        cur = conn.cursor()
-        sqlcontent = 'insert into '+self.tablename+'(trade_type,price,volume,intrahigh,intralow,trade_time,lasttradetype,pos) values(%s,%s,%s,%s,%s,%s,%s,%s)'
-        cur.execute(sqlcontent,value)
-        conn.commit()
-        cur.close()
-        conn.close()
-
-    def readtradelog2mysql(self):
-        conn = pymysql.connect(host=self.host,user=self.user,passwd=self.passwd,db=self.db,port=self.port)
-        cur = conn.cursor()
-        sqlcontent = 'select * from ' + self.tablename + ' order by order_id desc limit 0,1'
-        cur.execute(sqlcontent)
-        data = cur.fetchall()
-        cur.close()
-        conn.close()
-        return  data
-
-# if __name__ == '__main__':
-#     conn = pymysql.connect(host='localhost', user='root', passwd='root', db='tradelog', port=3306)
-#     cur = conn.cursor()
-#     sqlcontent = 'select * from ' + 'okcoin_ltc' + ' order by order_id desc limit 0,1'
-#     cur.execute(sqlcontent)
-#     data = cur.fetchall()
-#     cur.close()
-#     conn.close()
+    def getEngineType(self):
+        """查询当前运行的环境"""
+        return self.ctaEngine.engineType
+    

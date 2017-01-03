@@ -286,10 +286,10 @@ class Api(vnokcoin.OkCoinApi):
         self.subscribeSpotUserInfo()   
         
         self.subscribeSpotTicker(vnokcoin.SYMBOL_BTC)
-        self.subscribeSpotTicker(vnokcoin.SYMBOL_LTC)
+        #self.subscribeSpotTicker(vnokcoin.SYMBOL_LTC)
         
         self.subscribeSpotDepth(vnokcoin.SYMBOL_BTC, vnokcoin.DEPTH_20)
-        self.subscribeSpotDepth(vnokcoin.SYMBOL_LTC, vnokcoin.DEPTH_20)
+        #self.subscribeSpotDepth(vnokcoin.SYMBOL_LTC, vnokcoin.DEPTH_20)
         
         # 如果连接的是USD网站则订阅期货相关回报数据
         if self.currency == vnokcoin.CURRENCY_USD:
@@ -319,27 +319,27 @@ class Api(vnokcoin.OkCoinApi):
     def initCallback(self):
         """初始化回调函数"""
         # USD_SPOT
-        self.cbDict['ok_sub_spotusd_btc_ticker'] = self.onTicker
-        self.cbDict['ok_sub_spotusd_ltc_ticker'] = self.onTicker
+        #self.cbDict['ok_sub_spotusd_btc_ticker'] = self.onTicker
+        #self.cbDict['ok_sub_spotusd_ltc_ticker'] = self.onTicker
         
-        self.cbDict['ok_sub_spotusd_btc_depth_20'] = self.onDepth
-        self.cbDict['ok_sub_spotusd_ltc_depth_20'] = self.onDepth
+        #self.cbDict['ok_sub_spotusd_btc_depth_20'] = self.onDepth
+        #self.cbDict['ok_sub_spotusd_ltc_depth_20'] = self.onDepth
         
-        self.cbDict['ok_spotusd_userinfo'] = self.onSpotUserInfo
-        self.cbDict['ok_spotusd_orderinfo'] = self.onSpotOrderInfo
+        #self.cbDict['ok_spotusd_userinfo'] = self.onSpotUserInfo
+        #self.cbDict['ok_spotusd_orderinfo'] = self.onSpotOrderInfo
         
-        self.cbDict['ok_sub_spotusd_userinfo'] = self.onSpotSubUserInfo
-        self.cbDict['ok_sub_spotusd_trades'] = self.onSpotSubTrades
+        #self.cbDict['ok_sub_spotusd_userinfo'] = self.onSpotSubUserInfo
+        #self.cbDict['ok_sub_spotusd_trades'] = self.onSpotSubTrades
         
-        self.cbDict['ok_spotusd_trade'] = self.onSpotTrade
-        self.cbDict['ok_spotusd_cancel_order'] = self.onSpotCancelOrder
+        #self.cbDict['ok_spotusd_trade'] = self.onSpotTrade
+        #self.cbDict['ok_spotusd_cancel_order'] = self.onSpotCancelOrder
         
         # CNY_SPOT
         self.cbDict['ok_sub_spotcny_btc_ticker'] = self.onTicker
-        self.cbDict['ok_sub_spotcny_ltc_ticker'] = self.onTicker        
+        #self.cbDict['ok_sub_spotcny_ltc_ticker'] = self.onTicker
         
         self.cbDict['ok_sub_spotcny_btc_depth_20'] = self.onDepth
-        self.cbDict['ok_sub_spotcny_ltc_depth_20'] = self.onDepth
+        #self.cbDict['ok_sub_spotcny_ltc_depth_20'] = self.onDepth
         
         self.cbDict['ok_spotcny_userinfo'] = self.onSpotUserInfo
         self.cbDict['ok_spotcny_orderinfo'] = self.onSpotOrderInfo
@@ -360,10 +360,11 @@ class Api(vnokcoin.OkCoinApi):
         
         channel = data['channel']
         symbol = channelSymbolMap[channel]
-        vtSymbol=EXCHANGE_NAME+"_"+symbol
+        #vtSymbol=EXCHANGE_NAME+"_"+symbol
+        vtSymbol =symbol
         if vtSymbol not in self.tickDict:
             tick = VtTickData()
-            tick.symbol = vtSymbol
+            tick.symbol = symbol
             tick.vtSymbol = vtSymbol
             tick.gatewayName = self.gatewayName
             tick.exchange = EXCHANGE_NAME
@@ -389,10 +390,11 @@ class Api(vnokcoin.OkCoinApi):
         
         channel = data['channel']
         symbol = channelSymbolMap[channel]
-        vtSymbol = EXCHANGE_NAME + "_" + symbol
+        #vtSymbol = EXCHANGE_NAME + "_" + symbol
+        vtSymbol=symbol
         if vtSymbol not in self.tickDict:
             tick = VtTickData()
-            tick.symbol = vtSymbol
+            tick.symbol = symbol
             tick.vtSymbol = vtSymbol
             tick.gatewayName = self.gatewayName
 
@@ -566,8 +568,8 @@ class Api(vnokcoin.OkCoinApi):
         """生成合约"""
         new = copy(contract)
         new.symbol = symbol
-        #new.vtSymbol = symbol
-        new.vtSymbol = contract.exchange+CONNECTION_MARK+symbol
+        new.vtSymbol = symbol
+        #new.vtSymbol = contract.exchange+CONNECTION_MARK+symbol
         new.name = symbol
         return new
 
@@ -617,10 +619,15 @@ class Api(vnokcoin.OkCoinApi):
     #----------------------------------------------------------------------
     def onSpotTrade(self, data):
         """委托回报"""
-        print "rawData:", data
-        rawData = data['data']
+        self.lastOrderID=""
+        if 'data' in data:
+            rawData = data['data']
+            self.lastOrderID = rawData['order_id']
+        else:
+            print "onSpotTrade Error:",data
 
-        self.lastOrderID = rawData['order_id']
+
+
         
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
@@ -638,14 +645,10 @@ class Api(vnokcoin.OkCoinApi):
         symbol = spotSymbolMapReverse[req.symbol][:4]
         type_ = priceTypeMapReverse[(req.direction, req.priceType)]
         self.spotTrade(symbol, type_, str(req.price), str(req.volume))
-        print "condition Start"
         # 等待发单回调推送委托号信息
         self.orderCondition.acquire()
-        print "condition Start1"
         self.orderCondition.wait()
-        print "condition Start2"
         self.orderCondition.release()
-        print "condition Start3"
         
         vtOrderID = '.'.join([self.gatewayName, self.lastOrderID])
         self.lastOrderID = ''

@@ -12,7 +12,7 @@
 """
 
 from ctaBase import *
-from ctaTemplate import CtaTemplate
+from ctaTemplate_2 import CtaTemplate_2
 from datetime import datetime
 import talib
 import numpy as np
@@ -23,7 +23,7 @@ from radarwinFunction.rwFunction import *
 from weixinWarning import *
 
 ########################################################################
-class Price_Different(CtaTemplate):
+class Price_Different(CtaTemplate_2):
     """布林带突破系统"""
     className = 'Price_Different'
     author = u'vista'
@@ -80,7 +80,7 @@ class Price_Different(CtaTemplate):
     buyresult = False
     sellresult = False
 
-    priceDifferent=4
+    priceDifferent=2
 
     # 参数列表，保存了参数的名称
     paramList = ['name',
@@ -88,9 +88,7 @@ class Price_Different(CtaTemplate):
                  'author',
                  'vtSymbol',
                  'bollingLength',
-                 'atrLength',
-                 'atrFactor',
-                 'exSymbol'
+                 'atrLength'
                  ]
 
     # 变量列表，保存了变量的名称
@@ -119,7 +117,8 @@ class Price_Different(CtaTemplate):
         self.tickDict={}
         self.messageFlag = False
         self.buySellFlag=0
-        self.positionDict = {}
+        self.positionDict_huobi = {}
+        self.positionDict_okcoin = {}
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
@@ -150,9 +149,9 @@ class Price_Different(CtaTemplate):
 
     # ----------------------------------------------------------------------
     def onTick(self, tick):
-        if tick.exchange=="HUOBI":
+        if tick.gatewayName=="HUOBI":
             self.__onTick_huobi(tick)
-        elif tick.exchange == "OKCOIN":
+        elif tick.gatewayName == "OKCOIN":
             self.__onTick_okcoin(tick)
     # ----------------------------------------------------------------------
     def __onTick_okcoin(self, tick):
@@ -278,7 +277,11 @@ class Price_Different(CtaTemplate):
         pass
     '''
     def onPosition(self,position):
-        self.positionDict = position
+        if "HUOBI" in position:
+            self.positionDict_huobi = position
+        elif "OKCOIN" in position:
+            self.positionDict_okcoin = position
+        pass
 
     def __processQueue(self,gatewayName,tick):
         self.tickDict[gatewayName]=tick
@@ -289,57 +292,54 @@ class Price_Different(CtaTemplate):
             #self.buyresult = getPosition("buy", self.positionDict, huobi_lastprice + 1, self.lots)
             #self.sellresult = getPosition("sell", self.positionDict, okcoin_lastprice - 1, self.lots)
             if abs(huobi_lastprice-okcoin_lastprice) > self.priceDifferent:
+
                 #print "yes:",abs(huobi_lastprice-okcoin_lastprice)
                 #print "self.messageFlag:",self.messageFlag
                 if self.messageFlag:
                     self.messageFlag = False
                     if huobi_lastprice > okcoin_lastprice:
-                        #huobi:sell , okcoin:buy
-                        self.vtSymbol=self.exSymbol['HUOBI']
-                        self.sell(self.tickDict['HUOBI'].lastPrice, self.lots)
-                        self.vtSymbol = self.exSymbol['OKCOIN']
-                        self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots)
+                        sellResult = getPosition("sell", self.positionDict_huobi, self.tickDict['HUOBI'], self.lots)
+                        buyResult = getPosition("buy", self.positionDict_okcoin, self.tickDict['OKCOIN'], self.lots)
+                        if sellResult and buyResult:
+                            #huobi:sell , okcoin:buy
+                            #self.vtSymbol=self.exSymbol['HUOBI']
+                            #self.sell(self.tickDict['HUOBI'].lastPrice-1, self.lots,'HUOBI')
+                            #self.vtSymbol = self.exSymbol['OKCOIN']
+                            #self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
 
-                        self.vtSymbol = self.exSymbol['HUOBI']
-                        self.buy(self.tickDict['HUOBI'].lastPrice, self.lots)
-                        self.vtSymbol = self.exSymbol['OKCOIN']
-                        self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots)
-                        self.buySellFlag=1
-                        sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                        print sendMessage
+                            #self.vtSymbol = self.exSymbol['HUOBI']
+                            #self.buy(self.tickDict['HUOBI'].lastPrice+1, self.lots,'HUOBI')
+                            # self.vtSymbol = self.exSymbol['OKCOIN']
+                            #self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
+
+                            sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
+                            #print sendMessage
+                        else:
+                            print "钱币不足"
                     else:
-                        # huobi:buy , okcoin:sell
+                        buyResult = getPosition("buy", self.positionDict_huobi, self.tickDict['HUOBI'], self.lots)
+                        sellResult = getPosition("sell", self.positionDict_okcoin, self.tickDict['OKCOIN'], self.lots)
+                        if buyResult and sellResult:
+                            # huobi:buy , okcoin:sell
 
-                        self.vtSymbol = self.exSymbol['HUOBI']
-                        self.buy(self.tickDict['HUOBI'].lastPrice, self.lots)
-                        self.vtSymbol = self.exSymbol['OKCOIN']
-                        self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots)
+                            #self.vtSymbol = self.exSymbol['HUOBI']
+                            #self.buy(self.tickDict['HUOBI'].lastPrice, self.lots)
+                            # self.vtSymbol = self.exSymbol['OKCOIN']
+                            #self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
 
-                        self.vtSymbol = self.exSymbol['HUOBI']
-                        self.sell(self.tickDict['HUOBI'].lastPrice, self.lots)
-                        self.vtSymbol = self.exSymbol['OKCOIN']
-                        self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots)
-                        self.buySellFlag = 2
-                        sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                        print sendMessage
-
+                            #self.vtSymbol = self.exSymbol['HUOBI']
+                            #self.sell(self.tickDict['HUOBI'].lastPrice, self.lots)
+                            # self.vtSymbol = self.exSymbol['OKCOIN']
+                            #self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
+                            sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
+                            #print sendMessage
+                        else:
+                            print "钱币不足"
             else:
                 self.messageFlag = True
                 #print 'no:',abs(huobi_lastprice-okcoin_lastprice)
                     #print 'self.exSymbol:', self.exSymbol
 
-
-        # if 'HUOBI' in tick and 'OKCOIN' in tick:
-        #
-        #     if abs(tick['HUOBI']-tick['OKCOIN']) > self.PRICE_DIFFERENC:
-        #         print "yes:",tick['HUOBI'] ,tick['OKCOIN']
-        #         if self.messageFlag:
-        #             sendMessage="套利执行："+str(abs(tick['HUOBI']-tick['OKCOIN']))+" 火币："+str(tick['HUOBI'])+" OKCOIN："+str(tick['OKCOIN'])
-        #             send_msg(sendMessage)
-        #             self.messageFlag=False
-        #     else:
-        #         self.messageFlag = True
-        #         print 'no:',tick['HUOBI'] ,tick['OKCOIN']
 
 
 if __name__ == '__main__':

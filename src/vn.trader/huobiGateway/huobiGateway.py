@@ -343,8 +343,8 @@ class Api(vnhuobi.HuobiApi):
         """生成合约"""
         new = copy(contract)
         new.symbol = symbol
-        #new.vtSymbol = symbol
-        new.vtSymbol = EXCHANGE_NAME + CONNECTION_MARK + symbol
+        new.vtSymbol = symbol
+        #new.vtSymbol = EXCHANGE_NAME + CONNECTION_MARK + symbol
         new.name = symbol
         return new
 
@@ -376,11 +376,12 @@ class Api(vnhuobi.HuobiApi):
             return
         ticker = data['ticker']
         symbol = channelSymbolMap[ticker['symbol']]
-        vtSymbol= EXCHANGE_NAME+'_'+symbol
+        #vtSymbol= EXCHANGE_NAME+'_'+symbol
+        vtSymbol =symbol
         if vtSymbol not in self.tickDict:
             tick = VtTickData()
-            tick.symbol = EXCHANGE_NAME+'_'+symbol
-            tick.vtSymbol = EXCHANGE_NAME+'_'+symbol
+            tick.symbol = symbol
+            tick.vtSymbol = vtSymbol
             tick.gatewayName = self.gatewayName
             tick.exchange=EXCHANGE_NAME
             self.tickDict[vtSymbol] = tick

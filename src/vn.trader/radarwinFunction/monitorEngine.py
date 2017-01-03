@@ -20,13 +20,15 @@ from threading import Thread, Condition
 from eventEngine import *
 from weixinWarning import *
 from rwDbConnection import *
-
+from rwFunction import *
+from vtGateway import VtSubscribeReq, VtOrderReq, VtCancelOrderReq, VtLogData
+from vtConstant import *
 
 ########################################################################
 class MonitorEngine(object):
     """CTA策略引擎"""
     EVENT_MONITOR='eMonitor'
-    PRICE_DIFFERENC=10
+    PRICE_DIFFERENC=2
 
     #----------------------------------------------------------------------
     def __init__(self, mainEngine, eventEngine):
@@ -34,15 +36,20 @@ class MonitorEngine(object):
         self.mainEngine = mainEngine
         self.eventEngine = eventEngine
         self.tickDict={}
+        self.signalDict={}
+        self.positionDict_huobi={}
+        self.positionDict_okcoin={}
         self.messageFlag=True
         self.dbCon = rwDbConnection()
-        # 注册事件监听
         self.registerEvent()
-
+        self.lots=0.01
         #self.reqThread = Thread(target=self.processQueue)
         #self.reqThread.start()
 
-
+    # ----------------------------------------------------------------------
+    # def strategyStart(self):
+    #     # 注册事件监听
+    #     self.registerEvent()
     #----------------------------------------------------------------------
     def processTickEvent(self, event):
         """处理行情推送"""
@@ -50,12 +57,14 @@ class MonitorEngine(object):
         tick = event.dict_['data']
         # 收到tick行情后，先处理本地停止单（检查是否要立即发出）
         self.tickDict[tick.gatewayName]=tick.lastPrice
-        event = Event(type_=self.EVENT_MONITOR)
-        event.dict_['data'] = self.tickDict
-        self.processQueue(event)
-        #self.eventEngine.put(event)
-        #print "processTickEvent:",self.tickDict
-        #self.orderCondition = Condition()
+        # event = Event(type_=self.EVENT_MONITOR)
+        # event.dict_['data'] = self.tickDict
+
+        if 'HUOBI' in self.tickDict and 'OKCOIN' in self.tickDict:
+            self.weixinPost()
+        #self.getSignal(self.tickDict)
+        # self.eventEngine.put(event)
+
 
     #----------------------------------------------------------------------
     def registerEvent(self):
@@ -65,25 +74,93 @@ class MonitorEngine(object):
                 return
         """注册事件监听"""
         self.eventEngine.register(EVENT_TICK, self.processTickEvent)
-        self.eventEngine.register(self.EVENT_MONITOR, self.processQueue)
+        self.eventEngine.register(EVENT_POSITION+"HUOBI", self.positionEvent_huobi)
+        self.eventEngine.register(EVENT_POSITION + "OKCOIN", self.positionEvent_okcoin)
+        #self.eventEngine.register(self.EVENT_MONITOR, self.getSignal)
 
-    def processQueue(self,event):
+    # def getSignal(self,tick):
+    #
+    #     if 'HUOBI' in tick and 'OKCOIN' in tick:
+    #         self.weixinPost(tick)
 
-        tick=event.dict_['data']
-        if 'HUOBI' in tick and 'OKCOIN' in tick:
 
-            if abs(tick['HUOBI']-tick['OKCOIN']) > self.PRICE_DIFFERENC:
-                print "yes:",tick['HUOBI'] ,tick['OKCOIN']
-                if self.messageFlag:
-                    sendMessage="套利执行："+str(abs(tick['HUOBI']-tick['OKCOIN']))+" 火币："+str(tick['HUOBI'])+" OKCOIN："+str(tick['OKCOIN'])
-                    send_msg(sendMessage)
-                    self.messageFlag=False
-            else:
-                self.messageFlag = True
-                print 'no:',tick['HUOBI'] ,tick['OKCOIN']
 
         #print "processQueue:",tick['HUOBI'],tick['OKCOIN']
+    def weixinPost(self):
+        if abs(self.tickDict['HUOBI'] - self.tickDict['OKCOIN']) > self.PRICE_DIFFERENC:
 
+            #print "yes:", self.tickDict['HUOBI'], self.tickDict['OKCOIN']
+            if self.messageFlag:
+                sendMessage = "套利执行：" + str(abs(self.tickDict['HUOBI'] - self.tickDict['OKCOIN'])) + " 火币：" + str(
+                    self.tickDict['HUOBI']) + " OKCOIN：" + str(self.tickDict['OKCOIN'])
+                #print sendMessage
+                # send_msg(sendMessage)
+                self.messageFlag = False
+        else:
+            self.messageFlag = True
+            #print 'no:', self.tickDict['HUOBI'], self.tickDict['OKCOIN']
+
+    def sendOrder(self):
+        print "sendOrder"
+        if 'HUOBI' in self.tickDict and 'OKCOIN' in self.tickDict:
+            if self.tickDict['HUOBI'] > self.tickDict['OKCOIN']:
+                sellResult=getPosition("sell",self.positionDict_huobi,self.tickDict['HUOBI'],self.lots)
+                buyResult = getPosition("buy", self.positionDict_okcoin, self.tickDict['OKCOIN'], self.lots)
+                if sellResult and buyResult:
+                    req = VtOrderReq()
+                    req.symbol="BTC_CNY_SPOT"
+                    req.direction=DIRECTION_SHORT
+                    req.price=self.tickDict['HUOBI']-10
+                    req.volume=self.lots
+                    print (u'HUOBI发送委托卖单，%s@%s' % (req.volume, req.price))
+                    self.mainEngine.sendOrder(req,'HUOBI')
+                    req.symbol="BTC_CNY_SPOT"
+                    req.direction=DIRECTION_LONG
+                    req.priceType = PRICETYPE_LIMITPRICE
+                    req.price = self.tickDict['OKCOIN']+10
+                    req.volume = self.lots
+                    print (u'OKCOIN发送委托买单，%s@%s' % (req.volume, req.price))
+                    self.mainEngine.sendOrder(req, 'OKCOIN')
+                else:
+                    self.writeLog(u'钱币不足无法交易')
+            else:
+                buyResult = getPosition("buy", self.positionDict_huobi, self.tickDict['HUOBI'], self.lots)
+                sellResult = getPosition("sell", self.positionDict_okcoin, self.tickDict['OKCOIN'], self.lots)
+                if sellResult and buyResult:
+                    req = VtOrderReq()
+                    req.symbol = "BTC_CNY_SPOT"
+                    req.direction = DIRECTION_LONG
+                    req.price = self.tickDict['HUOBI'] + 10
+                    req.volume = self.lots
+                    print (u'HUOBI发送委托买单，%s@%s' % (req.volume, req.price))
+                    self.mainEngine.sendOrder(req, 'HUOBI')
+                    req.symbol = "BTC_CNY_SPOT"
+                    req.direction = DIRECTION_SHORT
+                    req.priceType = PRICETYPE_LIMITPRICE
+                    req.price = self.tickDict['OKCOIN'] - 10
+                    req.volume = self.lots
+                    print (u'OKCOIN发送委托卖单，%s@%s' % (req.volume, req.price))
+                    self.mainEngine.sendOrder(req, 'OKCOIN')
+                else:
+                    self.writeLog(u'钱币不足无法交易')
+
+
+    def positionEvent_huobi(self,event):
+        pos = event.dict_['data']
+        self.positionDict_huobi[pos.vtSymbol] = pos
+
+    def positionEvent_okcoin(self,event):
+        pos = event.dict_['data']
+        self.positionDict_okcoin[pos.vtSymbol] = pos
+
+
+    def writeLog(self, content):
+        """快速发出日志事件"""
+        log = VtLogData()
+        log.logContent = content
+        event = Event(type_=EVENT_LOG)
+        event.dict_['data'] = log
+        self.eventEngine.put(event)
 
 class Event:
     """事件对象"""

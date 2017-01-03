@@ -93,22 +93,22 @@ class CtaTemplate(object):
     def buy(self, price, volume, stop=False):
         """买开"""
         return self.sendOrder(CTAORDER_BUY, price, volume, stop)
-    
+
     #----------------------------------------------------------------------
     def sell(self, price, volume, stop=False):
         """卖平"""
-        return self.sendOrder(CTAORDER_SELL, price, volume, stop)       
+        return self.sendOrder(CTAORDER_SELL, price, volume, stop)
 
     #----------------------------------------------------------------------
     def short(self, price, volume, stop=False):
         """卖开"""
-        return self.sendOrder(CTAORDER_SHORT, price, volume, stop)          
- 
+        return self.sendOrder(CTAORDER_SHORT, price, volume, stop)
+
     #----------------------------------------------------------------------
     def cover(self, price, volume, stop=False):
         """买平"""
         return self.sendOrder(CTAORDER_COVER, price, volume, stop)
-        
+
     #----------------------------------------------------------------------
     def sendOrder(self, orderType, price, volume, stop=False):
         """发送委托"""
@@ -117,7 +117,7 @@ class CtaTemplate(object):
             if stop:
                 vtOrderID = self.ctaEngine.sendStopOrder(self.vtSymbol, orderType, price, volume, self)
             else:
-                vtOrderID = self.ctaEngine.sendOrder(self.vtSymbol, orderType, price, volume, self) 
+                vtOrderID = self.ctaEngine.sendOrder(self.vtSymbol, orderType, price, volume, self)
             return vtOrderID
         else:
             # 交易停止时发单返回空字符串

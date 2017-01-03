@@ -318,7 +318,8 @@ class MainWindow(QtGui.QMainWindow):
         try:
             self.widgetDict['ctaM'].showMaximized()
         except KeyError:
-            self.widgetDict['ctaM'] = CtaEngineManager(self.mainEngine.ctaEngine, self.eventEngine)
+            #Radarwin
+            self.widgetDict['ctaM'] = CtaEngineManager(self.mainEngine.ctaEngine_2, self.eventEngine)
             self.widgetDict['ctaM'].showMaximized()
             
     #----------------------------------------------------------------------
