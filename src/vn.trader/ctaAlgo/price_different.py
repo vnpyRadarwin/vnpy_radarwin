@@ -250,32 +250,22 @@ class Price_Different(CtaTemplate_2):
     # ----------------------------------------------------------------------
     def onOrder(self, order):
         """收到委托变化推送（必须由用户继承实现）"""
-        print 'orderinfo:'+ order.direction, order.price, order.tradedVolume
+        #print 'orderinfo:'+ order.direction, order.price, order.tradedVolume
         pass
 
     def onTrade(self, trade):
         """收到成交变化推送（必须由用户继承实现）"""
-        if self.direction == 0 :
-            tradedirection = trade.direction.encode('utf-8') + '平'
-        else :
-            tradedirection = trade.direction.encode('utf-8') + '开'
-
-        value = [tradedirection, trade.price, trade.volume, self.intraTradeHigh, self.intraTradeLow, datetime.now(), self.lasttradetype, self.direction]
-        sqlcontent = 'insert into ' + self.tablename + '(trade_type,price,volume,intrahigh,intralow,trade_time,lasttradetype,pos) values(%s,%s,%s,%s,%s,%s,%s,%s)'
-        #print  '价格：',trade.price
-        self.dbCon.insUpdMySqlData(sqlcontent, value,dbFlag=DATABASE_VNPY)
+        # if self.direction == 0 :
+        #     tradedirection = trade.direction.encode('utf-8') + '平'
+        # else :
+        #     tradedirection = trade.direction.encode('utf-8') + '开'
+        #
+        # value = [tradedirection, trade.price, trade.volume, self.intraTradeHigh, self.intraTradeLow, datetime.now(), self.lasttradetype, self.direction]
+        # sqlcontent = 'insert into ' + self.tablename + '(trade_type,price,volume,intrahigh,intralow,trade_time,lasttradetype,pos) values(%s,%s,%s,%s,%s,%s,%s,%s)'
+        # #print  '价格：',trade.price
+        # self.dbCon.insUpdMySqlData(sqlcontent, value,dbFlag=DATABASE_VNPY)
         pass
 
-    '''
-    def onPosition(self,position):
-        if position.symbol == 'btc':
-            self.btcnum = position.position
-            #print position.symbol,':',position.position
-        if position.symbol == 'cny':
-            self.cnynum = position.position
-            #print position.symbol,':',position.position
-        pass
-    '''
     def onPosition(self,position):
         if "HUOBI" in position:
             self.positionDict_huobi = position
@@ -291,6 +281,7 @@ class Price_Different(CtaTemplate_2):
             okcoin_lastprice = self.tickDict['OKCOIN'].lastPrice
             #self.buyresult = getPosition("buy", self.positionDict, huobi_lastprice + 1, self.lots)
             #self.sellresult = getPosition("sell", self.positionDict, okcoin_lastprice - 1, self.lots)
+            #价差大于设定值的时候
             if abs(huobi_lastprice-okcoin_lastprice) > self.priceDifferent:
 
                 #print "yes:",abs(huobi_lastprice-okcoin_lastprice)
