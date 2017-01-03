@@ -124,6 +124,10 @@ class MainWindow(QtGui.QMainWindow):
         
         ctaAction = QtGui.QAction(u'CTA策略', self)
         ctaAction.triggered.connect(self.openCta)
+
+        #Radarwin
+        priceAction = QtGui.QAction(u'套利策略', self)
+        priceAction.triggered.connect(self.openPriceDifferent)
         
         rmAction = QtGui.QAction(u'风险管理', self)
         rmAction.triggered.connect(self.openRm)     
@@ -179,6 +183,10 @@ class MainWindow(QtGui.QMainWindow):
         # 算法相关
         algoMenu = menubar.addMenu(u'算法')
         algoMenu.addAction(ctaAction)
+        #Radarwin
+        algoMenu.addAction(priceAction)
+
+
         
         # 帮助
         helpMenu = menubar.addMenu(u'帮助')
@@ -319,8 +327,19 @@ class MainWindow(QtGui.QMainWindow):
             self.widgetDict['ctaM'].showMaximized()
         except KeyError:
             #Radarwin
-            self.widgetDict['ctaM'] = CtaEngineManager(self.mainEngine.ctaEngine_2, self.eventEngine)
+            self.widgetDict['ctaM'] = CtaEngineManager(self.mainEngine.ctaEngine, self.eventEngine)
             self.widgetDict['ctaM'].showMaximized()
+
+    # ----------------------------------------------------------------------
+    #Radarwin
+    def openPriceDifferent(self):
+        """打开CTA组件"""
+        try:
+            self.widgetDict['priceDifferentM'].showMaximized()
+        except KeyError:
+            # Radarwin
+            self.widgetDict['priceDifferentM'] = CtaEngineManager(self.mainEngine.ctaEngine_2, self.eventEngine)
+            self.widgetDict['priceDifferentM'].showMaximized()
             
     #----------------------------------------------------------------------
     def openDr(self):
