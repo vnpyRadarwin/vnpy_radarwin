@@ -18,6 +18,7 @@ from threading import Condition
 import vnokcoin
 from vtGateway import *
 from rwConstant import *
+from rwDbConnection import *
 
 # 价格类型映射
 priceTypeMap = {}
@@ -102,49 +103,53 @@ class OkcoinGateway(VtGateway):
         
         self.leverage = 0
         self.connected = False
+        self.dbCon = rwDbConnection()
         
     #----------------------------------------------------------------------
     def connect(self):
         """连接"""
         # 载入json文件
-        fileName = self.gatewayName + '_connect.json'
-        path = os.path.abspath(os.path.dirname(__file__))
-        fileName = os.path.join(path, fileName)
-        
-        try:
-            f = file(fileName)
-        except IOError:
-            log = VtLogData()
-            log.gatewayName = self.gatewayName
-            log.logContent = u'读取连接配置出错，请检查'
-            self.onLog(log)
-            return
+        # fileName = self.gatewayName + '_connect.json'
+        # path = os.path.abspath(os.path.dirname(__file__))
+        # fileName = os.path.join(path, fileName)
+
+        # try:
+        #     f = file(fileName)
+        # except IOError:
+        #     log = VtLogData()
+        #     log.gatewayName = self.gatewayName
+        #     log.logContent = u'读取连接配置出错，请检查'
+        #     self.onLog(log)
+        #     return
         
         # 解析json文件
-        setting = json.load(f)
+        #setting = json.load(f)
         try:
-            host = str(setting['host'])
-            apiKey = str(setting['apiKey'])
-            secretKey = str(setting['secretKey'])
-            trace = setting['trace']
-            leverage = setting['leverage']
+            data = self.dbCon.getMySqlData(GET_ACCOUNT_INFO, params='OKCOIN', dbFlag=DATABASE_VNPY)
+            data = data[0]
+            host = 'CNY'
+            apiKey = str(data['apiKey'])
+            secretKey = str(data['secretKey'])
+            password = data['password']
+            #trace = setting['trace']
+            #leverage = setting['leverage']
         except KeyError:
             log = VtLogData()
             log.gatewayName = self.gatewayName
-            log.logContent = u'连接配置缺少字段，请检查'
+            log.logContent = u'连接配置缺少字段，请检查 '
             self.onLog(log)
             return            
         
         # 初始化接口
-        self.leverage = leverage
+        #self.leverage = leverage
         
         if host == 'CNY':
             host = vnokcoin.OKCOIN_CNY
         else:
             host = vnokcoin.OKCOIN_USD
             
-        self.api.connect(host, apiKey, secretKey, trace)
-        
+        #self.api.connect(host, apiKey, secretKey, trace)
+        self.api.connect(host, apiKey, secretKey)
         log = VtLogData()
         log.gatewayName = self.gatewayName
         log.logContent = u'接口初始化成功'
