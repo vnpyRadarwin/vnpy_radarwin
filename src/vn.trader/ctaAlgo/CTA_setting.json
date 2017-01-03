@@ -3,6 +3,6 @@
     {
         "name": "Bolling",
         "className": "Bolling",
-        "vtSymbol": "BTC_CNY_SPOT"
+        "vtSymbol": "OKCOIN_BTC_CNY_SPOT"
     }
 ]
