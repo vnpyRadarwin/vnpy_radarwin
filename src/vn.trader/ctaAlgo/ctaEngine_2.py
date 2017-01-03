@@ -96,7 +96,7 @@ class CtaEngine_2(object):
         req.direction = DIRECTION_SHORT
         req.price = price
         req.volume = volume
-        req.priceType = orderType
+        req.priceType=PRICETYPE_LIMITPRICE
         vtOrderID = self.mainEngine.sendOrder(req, gatewayName)    # 发单
         self.orderStrategyDict[vtOrderID] = strategy        # 保存vtOrderID和策略的映射关系
 
