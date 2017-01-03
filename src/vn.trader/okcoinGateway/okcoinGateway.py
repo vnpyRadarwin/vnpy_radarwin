@@ -136,7 +136,7 @@ class OkcoinGateway(VtGateway):
         except KeyError:
             log = VtLogData()
             log.gatewayName = self.gatewayName
-            log.logContent = u'连接配置缺少字段，请检查'
+            log.logContent = u'连接配置缺少字段，请检查 '
             self.onLog(log)
             return            
         
