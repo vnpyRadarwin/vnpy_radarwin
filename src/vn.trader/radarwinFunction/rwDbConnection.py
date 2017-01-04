@@ -29,10 +29,14 @@ class rwDbConnection(object):
         # }
 
         self.config_vnpy = {
-            'host': '172.16.1.116',
-            'user': 'rw_vnpy',
-            'password': 'Abcd1234',
-            'db': 'vnpy',
+            #'host': '172.16.1.116',
+            'host': 'localhost',
+            #'user': 'rw_vnpy',
+            'user': 'root',
+            #'password': 'Abcd1234',
+            'password': '',
+            #'db': 'vnpy',
+            'db':'owenpandb',
             'port': 3306,
             'charset': 'utf8mb4',
             'cursorclass': pymysql.cursors.DictCursor

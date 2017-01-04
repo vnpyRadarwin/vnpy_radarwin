@@ -85,12 +85,30 @@ tradeTypeMap['3'] = TRADE_TYPE_MARKET_BUY
 tradeTypeMap['4'] = TRADE_TYPE_MARKET_SELL
 
 ############################################
+## 成交状态
+############################################
+tradeStatusMap = {}
+
+tradeStatusMap['0'] = TRADER_STATUS_ZERO
+tradeStatusMap['1'] = TRADER_STATUS_ONE
+tradeStatusMap['2'] = TRADER_STATUS_TWO
+tradeStatusMap['3'] = TRADER_STATUS_THREE
+
+
+############################################
 ## 委托单类型
 ############################################
 orderTypeMap = {}
 
 orderTypeMap['1'] = ORDER_TYPE_BUY
 orderTypeMap['2'] = ORDER_TYPE_SELL
+
+traderTypeMap = {}
+
+traderTypeMap['1'] = ORDER_TYPE_BUY
+traderTypeMap['2'] = ORDER_TYPE_SELL
+traderTypeMap['3'] = ORDER_TYPE_BUY
+traderTypeMap['4'] = ORDER_TYPE_SELL
 
 HUOBI_HOST="https://api.huobi.com/apiv3"
 ########################################################################
@@ -203,7 +221,7 @@ class HuobiGateway(VtGateway):
         # 下单后调用
         if self.api.tradeFlag:
             """查询委托"""
-            self.api.getOrders()
+            #self.api.getOrders()
             self.api.getTrades()
 
 
@@ -459,7 +477,7 @@ class Api(vnhuobi.HuobiApi):
             order.exchange = EXCHANGE_HUOBI
             order.vtSymbol = '.'.join([order.symbol, order.exchange])
             order.orderID = str(d['id'])
-            order.direction, priceType = priceTypeMap[d['type']]
+            order.direction, priceType = priceTypeMap[str(d['type'])]
             order.offset = orderTypeMap[str(d['type'])]
             #order.status = orderStatusMap[str(d['status'])]
 
@@ -493,31 +511,51 @@ class Api(vnhuobi.HuobiApi):
         """回调函数"""
         if len(data)==0:
             return
-        d=data
-        trade = VtTradeData()
-        trade.gatewayName = self.gatewayName
+        order = VtOrderData()
+        order.gatewayName = self.gatewayName
 
-        trade.symbol = BTC_CNY_SPOT
-        trade.exchange = EXCHANGE_HUOBI
-        trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
-        trade.orderID = str(d['id'])
-        trade.tradeID=  str(d['id'])
-        trade.direction, priceType = priceTypeMap[str(d['type'])]
-        trade.offset = tradeTypeMap[str(d['type'])]
-        #order.status = orderStatusMap[str(d['status'])]
+        order.symbol = BTC_CNY_SPOT
+        order.exchange = EXCHANGE_HUOBI
+        order.vtSymbol = '.'.join([order.symbol, order.exchange])
+        order.orderID = str(data['id'])
+        order.direction, priceType = priceTypeMap[str(data['type'])]
+        order.offset = traderTypeMap[str(data['type'])]
+        # order.status = orderStatusMap[str(d['status'])]
 
-        #trade.price = d['order_price']
-        trade.price=d['processed_price']
-        trade.volume=float(d['processed_amount'])
-        #order.volume = d['order_amount']
-        #trade.orderTime = generateDateTimeStamp(d['order_time'])
+        order.price = data['order_price']
+        order.totalVolume = data['order_amount']
+        order.tradeVolume = data['processed_amount']
+        #order.orderTime = generateDateTimeStamp(d['order_time'])
 
-        trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
-        trade.vtTradeID = '.'.join([self.gatewayName, trade.tradeID])
+        order.vtOrderID = '.'.join([self.gatewayName, order.orderID])
 
-        self.gateway.onTrade(trade)
+        self.gateway.onOrder(order)
 
-        self.orderDict[trade.orderID] = trade
+        #self.orderDict[order.orderID] = order
+        if 'status' in data and tradeStatusMap[str(data['status'])]==TRADER_STATUS_TWO:
+            trade = VtTradeData()
+            trade.gatewayName = self.gatewayName
+
+            trade.symbol = BTC_CNY_SPOT
+            trade.exchange = EXCHANGE_HUOBI
+            trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
+            trade.orderID = str(data['id'])
+            trade.tradeID=  str(data['id'])
+            trade.direction, priceType = priceTypeMap[str(data['type'])]
+            trade.offset = tradeTypeMap[str(data['type'])]
+
+
+            trade.price=data['processed_price']
+            trade.volume=float(data['processed_amount'])
+            trade.status=tradeStatusMap[str(data['status'])]
+
+
+            trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
+            trade.vtTradeID = '.'.join([self.gatewayName, trade.tradeID])
+
+            self.gateway.onTrade(trade)
+
+            #self.orderDict[trade.orderID] = trade
 
         self.writeLog(u'成交信息查询完成')
 

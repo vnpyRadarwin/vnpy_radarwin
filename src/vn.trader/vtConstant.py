@@ -79,3 +79,9 @@ CURRENCY_USD = 'USD'            # 美元
 CURRENCY_CNY = 'CNY'            # 人民币
 CURRENCY_UNKNOWN = 'UNKNOWN'    # 未知货币
 CURRENCY_NONE = ''              # 空货币
+
+# 成交状态
+TRADER_STATUS_ZERO = '未成交'
+TRADER_STATUS_ONE = '部分成交'
+TRADER_STATUS_TWO = '已完成'
+TRADER_STATUS_THREE = '已取消'

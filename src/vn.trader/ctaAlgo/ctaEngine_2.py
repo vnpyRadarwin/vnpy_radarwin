@@ -93,7 +93,12 @@ class CtaEngine_2(object):
         
         req = VtOrderReq()
         req.symbol = vtSymbol
-        req.direction = DIRECTION_SHORT
+        # CTA委托类型映射
+        if orderType == CTAORDER_BUY:
+            req.direction = DIRECTION_LONG
+
+        elif orderType == CTAORDER_SELL:
+            req.direction = DIRECTION_SHORT
         req.price = price
         req.volume = volume
         req.priceType=PRICETYPE_LIMITPRICE

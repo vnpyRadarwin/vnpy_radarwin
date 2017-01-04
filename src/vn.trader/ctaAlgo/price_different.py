@@ -41,7 +41,8 @@ class Price_Different(CtaTemplate_2):
     btcnum = 0
     cnynum = 0
     # 策略变量
-    bar = None  # K线对象
+    bar_okcoin = None  # K线对象
+    bar_huobi = None  # K线对象
     barMinute_okcoin = EMPTY_STRING  # K线当前的分钟
     barMinute_huobi = EMPTY_STRING  # K线当前的分钟
     datacount = 0
@@ -80,7 +81,7 @@ class Price_Different(CtaTemplate_2):
     buyresult = False
     sellresult = False
 
-    priceDifferent=2
+    priceDifferent=5
 
     # 参数列表，保存了参数的名称
     paramList = ['name',
@@ -166,8 +167,8 @@ class Price_Different(CtaTemplate_2):
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
         if tickMinute != self.barMinute_okcoin:  # 一分钟
             # if ((tickMinute != self.barMinute and (tickMinute+1) % 5 == 0) or not self.bar):  #五分钟
-            if self.bar:
-                self.onBar(self.bar)
+            if self.bar_okcoin:
+                self.__onBar_okcoin(self.bar_okcoin)
 
             bar = CtaBarData()
             bar.vtSymbol = tick.vtSymbol
@@ -183,12 +184,12 @@ class Price_Different(CtaTemplate_2):
             bar.time = tick.time
             bar.datetime = tick.datetime  # K线的时间设为第一个Tick的时间
 
-            self.bar = bar  # 这种写法为了减少一层访问，加快速度
+            self.bar_okcoin = bar  # 这种写法为了减少一层访问，加快速度
             self.barMinute_okcoin = tickMinute  # 更新当前的分钟
             print 'OKCOIN_K线已更新，最近K线时间：', self.barMinute_okcoin, bar.datetime, tickMinute
             # print 'btc:',self.btcnum,'cny:',self.cnynum
         else:  # 否则继续累加新的K线
-            bar = self.bar  # 写法同样为了加快速度
+            bar = self.bar_okcoin  # 写法同样为了加快速度
             bar.high = max(bar.high, tick.lastPrice)
             bar.low = min(bar.low, tick.lastPrice)
             bar.close = tick.lastPrice
@@ -207,8 +208,8 @@ class Price_Different(CtaTemplate_2):
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
         if tickMinute != self.barMinute_huobi:    #一分钟
         #if ((tickMinute != self.barMinute and (tickMinute+1) % 5 == 0) or not self.bar):  #五分钟
-            if self.bar:
-                self.onBar(self.bar)
+            if self.bar_huobi:
+                self.__onBar_huobi(self.bar_huobi)
 
             bar = CtaBarData()
             bar.vtSymbol = tick.vtSymbol
@@ -224,12 +225,12 @@ class Price_Different(CtaTemplate_2):
             bar.time = tick.time
             bar.datetime = tick.datetime  # K线的时间设为第一个Tick的时间
 
-            self.bar = bar  # 这种写法为了减少一层访问，加快速度
+            self.bar_huobi = bar  # 这种写法为了减少一层访问，加快速度
             self.barMinute_huobi = tickMinute  # 更新当前的分钟
             print 'HUOBI_K线已更新，最近K线时间：',self.barMinute_huobi,bar.datetime,tickMinute
             #print 'btc:',self.btcnum,'cny:',self.cnynum
         else:  # 否则继续累加新的K线
-            bar = self.bar  # 写法同样为了加快速度
+            bar = self.bar_huobi  # 写法同样为了加快速度
             bar.high = max(bar.high, tick.lastPrice)
             bar.low = min(bar.low, tick.lastPrice)
             bar.close = tick.lastPrice
@@ -237,12 +238,12 @@ class Price_Different(CtaTemplate_2):
 
 
     # ----------------------------------------------------------------------
-    def onBar_okcoin(self, bar):
+    def __onBar_okcoin(self, bar):
 
         pass
 
     # ----------------------------------------------------------------------
-    def onBar_huobi(self, bar):
+    def __onBar_huobi(self, bar):
         pass
     # ----------------------------------------------------------------------
     def onBar(self, bar):
@@ -284,7 +285,7 @@ class Price_Different(CtaTemplate_2):
             #价差大于设定值的时候
             if abs(huobi_lastprice-okcoin_lastprice) > self.priceDifferent:
 
-                print "yes:",abs(huobi_lastprice-okcoin_lastprice)
+                print "yes:",huobi_lastprice-okcoin_lastprice
                 #print "self.messageFlag:",self.messageFlag
                 if self.messageFlag:
                     self.messageFlag = False

@@ -7,6 +7,9 @@ from ctaAlgo.uiCtaWidget import CtaEngineManager
 from dataRecorder.uiDrWidget import DrEngineManager
 from riskManager.uiRmWidget import RmEngineManager
 
+from radarwinFunction.monitorEngine import MonitorEngine
+from radarwinFunction.rwConstant import *
+
 ########################################################################
 class MainWindow(QtGui.QMainWindow):
     """主窗口"""
@@ -125,9 +128,14 @@ class MainWindow(QtGui.QMainWindow):
         ctaAction = QtGui.QAction(u'CTA策略', self)
         ctaAction.triggered.connect(self.openCta)
 
-        #Radarwin
+        #Radarwin Start
         priceAction = QtGui.QAction(u'套利策略', self)
         priceAction.triggered.connect(self.openPriceDifferent)
+        monitorAction = QtGui.QAction(u'信号监听(套利)', self)
+        monitorAction.triggered.connect(self.monitorEnginer)
+        pdSendOrderAction = QtGui.QAction(u'套利策略发单', self)
+        pdSendOrderAction.triggered.connect(self.pd_sendOrder)
+        # Radarwin End
         
         rmAction = QtGui.QAction(u'风险管理', self)
         rmAction.triggered.connect(self.openRm)     
@@ -186,14 +194,19 @@ class MainWindow(QtGui.QMainWindow):
         #Radarwin
         algoMenu.addAction(priceAction)
 
-
+        # Radarwin 套利相关
+        straddleMenu = menubar.addMenu(u'套利')
+        #信号监听(套利)
+        straddleMenu.addAction(monitorAction)
+        # 套利策略发单
+        straddleMenu.addAction(pdSendOrderAction)
         
         # 帮助
         helpMenu = menubar.addMenu(u'帮助')
         helpMenu.addAction(restoreAction)
         helpMenu.addAction(aboutAction)  
         helpMenu.addAction(testAction)
-    
+
     #----------------------------------------------------------------------
     def initStatusBar(self):
         """初始化状态栏"""
@@ -319,6 +332,21 @@ class MainWindow(QtGui.QMainWindow):
         except KeyError:
             self.widgetDict['contractM'] = ContractMonitor(self.mainEngine)
             self.widgetDict['contractM'].show()
+
+    # ----------------------------------------------------------------------
+    #Radarwin 打开套利信号监听功能
+    def monitorEnginer(self):
+        """打开信号监听（套利）"""
+
+        self.mainEngine.connect(STRADDLE_INERFACE_1)
+        self.mainEngine.connect(STRADDLE_INERFACE_2)
+
+        self.monitorEngine=MonitorEngine(self.mainEngine,self.eventEngine,STRADDLE_INERFACE_1,STRADDLE_INERFACE_2)
+    # ----------------------------------------------------------------------
+    #Radarwin 套利功能发单
+    def pd_sendOrder(self):
+        """打开信号监听（套利）"""
+        self.monitorEngine.pd_sendOrder()
             
     #----------------------------------------------------------------------
     def openCta(self):

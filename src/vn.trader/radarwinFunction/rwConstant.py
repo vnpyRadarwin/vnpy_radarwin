@@ -30,6 +30,10 @@ LOGGER_FILE_NAME = 'D:\\python_workspace\\log\\atr_test.log'
 
 CONNECTION_MARK='_'
 
+# 套利下单接口
+STRADDLE_INERFACE_1='HUOBI'
+STRADDLE_INERFACE_2='OKCOIN'
+
 #SQL
 #---------------------------------------------------------------------------
 GET_STRATEGY_MASTER = 'SELECT sm.strategy_name as name , sm.strategy_class as className,sai.symbol as vtSymbol,ai.exchange_name as exchange_name FROM strategy_master sm,' \

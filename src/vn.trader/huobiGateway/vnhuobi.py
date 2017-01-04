@@ -231,6 +231,7 @@ class HuobiApi(object):
                 if error:
                     # 1小时后在连接
                     sleep(RECONNECTION_INTERVAL)
+                    print "tick data reconnection"
                     break
 
                 try:

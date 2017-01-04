@@ -872,10 +872,7 @@ class TradingWidget(QtGui.QFrame):
         self.setLayout(vbox)
 
         # 关联更新
-        #radarwin
-        #buttonSendOrder.clicked.connect(self.sendOrder)
-        buttonSendOrder.clicked.connect(self.rw_sendOrder)
-        # radarwin
+        buttonSendOrder.clicked.connect(self.sendOrder)
         buttonCancelAll.clicked.connect(self.cancelAll)
         self.lineSymbol.returnPressed.connect(self.updateSymbol)
 
@@ -1026,10 +1023,6 @@ class TradingWidget(QtGui.QFrame):
         
 
         self.mainEngine.sendOrder(req, gatewayName)
-    #----------------------------------------------------------------------
-    def rw_sendOrder(self):
-
-        self.mainEngine.monitorEngine.sendOrder()
     # ----------------------------------------------------------------------
     def cancelAll(self):
         """一键撤销所有委托"""

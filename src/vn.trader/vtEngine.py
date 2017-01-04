@@ -17,8 +17,6 @@ from ctaAlgo.ctaEngine import CtaEngine
 from dataRecorder.drEngine import DrEngine
 from riskManager.rmEngine import RmEngine
 
-from radarwinFunction.monitorEngine import MonitorEngine
-
 from ctaAlgo.ctaEngine_2 import CtaEngine_2
 
 
@@ -44,12 +42,12 @@ class MainEngine(object):
 
         # 扩展模块
         self.ctaEngine = CtaEngine(self, self.eventEngine)
-        #Radarwin
-        self.ctaEngine_2 = CtaEngine_2(self, self.eventEngine)
         self.drEngine = DrEngine(self, self.eventEngine)
         self.rmEngine = RmEngine(self, self.eventEngine)
 
-        self.monitorEngine = MonitorEngine(self, self.eventEngine)
+        # Radarwin 多接口下单策略引擎添加
+        self.ctaEngine_2 = CtaEngine_2(self, self.eventEngine)
+
     #----------------------------------------------------------------------
     def initGateway(self):
         """初始化接口对象"""

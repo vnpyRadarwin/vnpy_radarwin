@@ -115,7 +115,7 @@ class CtaTemplate_2(object):
         if self.trading:
             # 如果stop为True，则意味着发本地停止单
             if stop:
-                vtOrderID = self.ctaEngine.sendStopOrder(self.vtSymbol, orderType, price, volume, self,gatewayName)
+                vtOrderID = self.ctaEngine.sendStopOrder(self.vtSymbol, orderType, price, volume, self)
             else:
                 vtOrderID = self.ctaEngine.sendOrder(self.vtSymbol, orderType, price, volume, self,gatewayName)
             return vtOrderID
