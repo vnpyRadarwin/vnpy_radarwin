@@ -229,7 +229,6 @@ class OkCoinApi(object):
         params['type'] = str(type_)
         params['price'] = str(price)
         params['amount'] = str(amount)
-        print "params:",params
         channel = 'ok_spot%s_trade' %(self.currency)
         
         self.sendTradingRequest(channel, params)

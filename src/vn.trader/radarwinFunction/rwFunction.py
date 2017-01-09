@@ -36,6 +36,21 @@ def getPosition(params, positionDict, price, pos):
                 return False
     return True
 
+
+def getPosition_1(params, positionDict, price, pos):
+    if not positionDict:
+        return False
+    if params == TRADE_TYPE_BUY:
+        if SYMBOL_CNY in positionDict:
+            posData = positionDict[SYMBOL_CNY]
+            if posData< pos * price:
+                return False
+    elif params == TRADE_TYPE_SELL:
+        if SYMBOL_BTC in positionDict:
+            posData = positionDict[SYMBOL_BTC]
+            if posData< pos:
+                return False
+    return True
 #----------------------------------------------------------------------
 # 断线重连机制
 

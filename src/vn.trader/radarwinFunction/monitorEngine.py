@@ -27,23 +27,26 @@ from vtConstant import *
 ########################################################################
 class MonitorEngine(object):
     """CTA策略引擎"""
-    PRICE_DIFFERENC=2
 
     #----------------------------------------------------------------------
     def __init__(self, mainEngine, eventEngine,gatewayName_1,gatewayName_2):
         """Constructor"""
         self.mainEngine = mainEngine
         self.eventEngine = eventEngine
+        self.orderCondition = Condition()
         self.tickDict={}
         self.signalDict={}
-        self.positionDict_huobi={}
-        self.positionDict_okcoin={}
+        self.positionDict_1={}
+        self.positionDict_2={}
+        self.orderDict={}
         self.messageFlag=True
         #self.dbCon = rwDbConnection()
         self.gatewayName_1 = gatewayName_1
         self.gatewayName_2 = gatewayName_2
         self.registerEvent()
         self.lots=0.01
+        self.priceDifferent=2
+        self.margin=10
 
 
 
@@ -74,8 +77,11 @@ class MonitorEngine(object):
         self.eventEngine.register(EVENT_POSITION + self.gatewayName_1, self.__positionEvent_1)
         self.eventEngine.register(EVENT_POSITION + self.gatewayName_2, self.__positionEvent_2)
 
+        self.eventEngine.register(EVENT_ORDER + self.gatewayName_1, self.__orderEvent_1)
+        self.eventEngine.register(EVENT_ORDER + self.gatewayName_2, self.__orderEvent_2)
+
     def weixinPost(self):
-        if abs(self.tickDict[self.gatewayName_1] - self.tickDict[self.gatewayName_2]) > self.PRICE_DIFFERENC:
+        if abs(self.tickDict[self.gatewayName_1] - self.tickDict[self.gatewayName_2]) > self.priceDifferent:
 
             #print "yes:", self.tickDict[self.gatewayName_1], self.tickDict[self.gatewayName_2]
             if self.messageFlag:
@@ -95,50 +101,69 @@ class MonitorEngine(object):
         print "sendOrder"
         if self.gatewayName_1 in self.tickDict and self.gatewayName_2 in self.tickDict:
             if self.tickDict[self.gatewayName_1] > self.tickDict[self.gatewayName_2]:
-                sellResult=getPosition("sell",self.positionDict_huobi,self.tickDict[self.gatewayName_1],self.lots)
-                buyResult = getPosition("buy", self.positionDict_okcoin, self.tickDict[self.gatewayName_2], self.lots)
+                sellResult=getPosition("sell",self.positionDict_1,self.tickDict[self.gatewayName_1],self.lots)
+                buyResult = getPosition("buy", self.positionDict_2, self.tickDict[self.gatewayName_2], self.lots)
                 if sellResult and buyResult:
                     req = VtOrderReq()
                     req.symbol="BTC_CNY_SPOT"
                     req.direction=DIRECTION_SHORT
-                    req.price=self.tickDict[self.gatewayName_1]-10
+                    req.price=self.tickDict[self.gatewayName_1]-self.margin
                     req.volume=self.lots
                     self.writeLog(u'火币发送委托卖单，%s@%s' % (req.volume, req.price))
                     #print (u'HUOBI发送委托卖单，%s@%s' % (req.volume, req.price))
                     self.mainEngine.sendOrder(req,self.gatewayName_1)
-                    req.symbol="BTC_CNY_SPOT"
-                    req.direction=DIRECTION_LONG
-                    req.priceType = PRICETYPE_LIMITPRICE
-                    req.price = self.tickDict[self.gatewayName_2]+10
-                    req.volume = self.lots
-                    self.writeLog(u'OKCOIN发送委托买单，%s@%s' % (req.volume, req.price))
-                    #print (u'OKCOIN发送委托买单，%s@%s' % (req.volume, req.price))
-                    self.mainEngine.sendOrder(req, self.gatewayName_2)
+                    self.orderCondition.acquire()
+                    self.orderCondition.wait()
+                    self.orderCondition.release()
+                    if self.gatewayName_1 in self.orderDict:
+                        orderData = self.orderDict[self.gatewayName_1]
+                        if orderData.status == TRADER_STATUS_TWO:
+                            self.writeLog(u'火币卖单成交，%s@%s' % (req.volume, req.price))
+                            req.symbol="BTC_CNY_SPOT"
+                            req.direction=DIRECTION_LONG
+                            req.priceType = PRICETYPE_LIMITPRICE
+                            req.price = self.tickDict[self.gatewayName_2]+self.margin
+                            req.volume = self.lots
+                            self.writeLog(u'OKCOIN发送委托买单，%s@%s' % (req.volume, req.price))
+                            # print (u'OKCOIN发送委托买单，%s@%s' % (req.volume, req.price))
+                            self.mainEngine.sendOrder(req, self.gatewayName_2)
+                        else:
+                            self.writeLog(u'火币卖单未成交，%s@%s' % (req.volume, req.price))
                 else:
                     if not sellResult:
                         self.writeLog(u'火币账户币不足无法执行卖出单')
                     if not buyResult:
                         self.writeLog(u'OKCOIN账户钱不足无法执行买入单')
             else:
-                buyResult = getPosition("buy", self.positionDict_huobi, self.tickDict[self.gatewayName_1], self.lots)
-                sellResult = getPosition("sell", self.positionDict_okcoin, self.tickDict[self.gatewayName_2], self.lots)
+                buyResult = getPosition("buy", self.positionDict_1, self.tickDict[self.gatewayName_1], self.lots)
+                sellResult = getPosition("sell", self.positionDict_2, self.tickDict[self.gatewayName_2], self.lots)
                 if sellResult and buyResult:
                     req = VtOrderReq()
                     req.symbol = "BTC_CNY_SPOT"
                     req.direction = DIRECTION_LONG
-                    req.price = self.tickDict[self.gatewayName_1] + 10
+                    req.price = 5000#self.tickDict[self.gatewayName_1] + self.margin
                     req.volume = self.lots
                     self.writeLog(u'火币发送委托买单，%s@%s' % (req.volume, req.price))
                     #print (u'HUOBI发送委托买单，%s@%s' % (req.volume, req.price))
                     self.mainEngine.sendOrder(req, self.gatewayName_1)
-                    req.symbol = "BTC_CNY_SPOT"
-                    req.direction = DIRECTION_SHORT
-                    req.priceType = PRICETYPE_LIMITPRICE
-                    req.price = self.tickDict[self.gatewayName_2] - 10
-                    req.volume = self.lots
-                    self.writeLog(u'OKCOIN发送委托卖单，%s@%s' % (req.volume, req.price))
-                    #print (u'OKCOIN发送委托卖单，%s@%s' % (req.volume, req.price))
-                    self.mainEngine.sendOrder(req, self.gatewayName_2)
+                    # 等待发单回调推送委托号信息
+                    self.orderCondition.acquire()
+                    self.orderCondition.wait()
+                    self.orderCondition.release()
+                    if self.gatewayName_1 in self.orderDict:
+                        orderData=self.orderDict[self.gatewayName_1]
+                        if orderData.status==TRADER_STATUS_TWO:
+                            self.writeLog(u'火币买单成交，%s@%s' % (req.volume, req.price))
+                            req.symbol = "BTC_CNY_SPOT"
+                            req.direction = DIRECTION_SHORT
+                            req.priceType = PRICETYPE_LIMITPRICE
+                            req.price = self.tickDict[self.gatewayName_2] - self.margin
+                            req.volume = self.lots
+                            self.writeLog(u'OKCOIN发送委托卖单，%s@%s' % (req.volume, req.price))
+                            #print (u'OKCOIN发送委托卖单，%s@%s' % (req.volume, req.price))
+                            self.mainEngine.sendOrder(req, self.gatewayName_2)
+                        else:
+                            self.writeLog(u'火币买单未成交，%s@%s' % (req.volume, req.price))
                 else:
                     if not sellResult:
                         self.writeLog(u'OKCOIN账户币不足无法执行卖出单')
@@ -148,11 +173,24 @@ class MonitorEngine(object):
 
     def __positionEvent_1(self,event):
         pos = event.dict_['data']
-        self.positionDict_huobi[pos.vtSymbol] = pos
+        self.positionDict_1[pos.vtSymbol] = pos
 
     def __positionEvent_2(self,event):
         pos = event.dict_['data']
-        self.positionDict_okcoin[pos.vtSymbol] = pos
+        self.positionDict_2[pos.vtSymbol] = pos
+        
+    def __orderEvent_1(self,event):
+        order = event.dict_['data']
+        self.orderDict[order.gatewayName] = order
+        # 收到委托号后，通知发送委托的线程返回委托号
+        self.orderCondition.acquire()
+        self.orderCondition.notify()
+        self.orderCondition.release()
+
+
+    def __orderEvent_2(self,event):
+        order = event.dict_['data']
+        self.orderDict[order.gatewayName] = order
 
 
     def writeLog(self, content):

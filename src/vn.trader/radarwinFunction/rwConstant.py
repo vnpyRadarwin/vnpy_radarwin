@@ -36,7 +36,9 @@ STRADDLE_INERFACE_2='OKCOIN'
 
 #SQL
 #---------------------------------------------------------------------------
-GET_STRATEGY_MASTER = 'SELECT sm.strategy_name as name , sm.strategy_class as className,sai.symbol as vtSymbol,ai.exchange_name as exchange_name FROM strategy_master sm,' \
-                      'strategy_account_info sai,account_info ai WHERE sm.strategy_id = sai.strategy_id and sai.account_id = ai.account_id and sm.flag = 1'
+#GET_STRATEGY_MASTER = 'SELECT sm.strategy_name as name , sm.strategy_class as className,sai.symbol as vtSymbol,ai.exchange_name as exchange_name FROM strategy_master sm,' \
+ #                     'strategy_account_info sai,account_info ai WHERE sm.strategy_id = sai.strategy_id and sai.account_id = ai.account_id and sm.flag = 1'
+
+GET_STRATEGY_MASTER='SELECT sm.strategy_name as name , sm.strategy_class as className,sm.symbol as vtSymbol FROM strategy_master sm WHERE sm.flag = 1'
 
 GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai WHERE ai.exchange_name=%s and ai.flag = 1'

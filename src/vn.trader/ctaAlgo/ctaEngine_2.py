@@ -105,7 +105,7 @@ class CtaEngine_2(object):
         vtOrderID = self.mainEngine.sendOrder(req, gatewayName)    # 发单
         self.orderStrategyDict[vtOrderID] = strategy        # 保存vtOrderID和策略的映射关系
 
-        print (u'策略%s发送委托，%s，%s，%s@%s' %(strategy.name, vtSymbol, req.direction, volume, price))
+        print (u'策略%s发送委托，%s，%s，%s@%s,%s' %(strategy.name, vtSymbol, req.direction, volume, price,gatewayName))
         self.writeCtaLog(u'策略%s发送委托，%s，%s，%s@%s'
                          %(strategy.name, vtSymbol, req.direction, volume, price))
         
@@ -221,12 +221,21 @@ class CtaEngine_2(object):
                 strategy.onTick(ctaTick)
     
     #----------------------------------------------------------------------
-    def processOrderEvent(self, event):
+    def processOrderEvent_huobi(self, event):
         """处理委托推送"""
         order = event.dict_['data']
         
         if order.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[order.vtOrderID]            
+            strategy.onOrder(order)
+
+    # ----------------------------------------------------------------------
+    def processOrderEvent_okcoin(self, event):
+        """处理委托推送"""
+        order = event.dict_['data']
+
+        if order.vtOrderID in self.orderStrategyDict:
+            strategy = self.orderStrategyDict[order.vtOrderID]
             strategy.onOrder(order)
     
     #----------------------------------------------------------------------
@@ -308,10 +317,11 @@ class CtaEngine_2(object):
     def registerEvent(self):
         """注册事件监听"""
         self.eventEngine.register(EVENT_TICK, self.processTickEvent)
-        #self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
-        #self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
-        self.eventEngine.register(EVENT_POSITION+"HUOBI", self.processPositionEvent_huobi)
+        self.eventEngine.register(EVENT_POSITION + "HUOBI", self.processPositionEvent_huobi)
         self.eventEngine.register(EVENT_POSITION + "OKCOIN", self.processPositionEvent_okcoin)
+        #
+        # self.eventEngine.register(EVENT_ORDER + "HUOBI", self.processOrderEvent_huobi)
+        # self.eventEngine.register(EVENT_ORDER + "OKCOIN", self.processOrderEvent_okcoin)
  
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):

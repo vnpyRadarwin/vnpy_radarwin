@@ -629,7 +629,7 @@ class Api(vnokcoin.OkCoinApi):
             rawData = data['data']
             self.lastOrderID = rawData['order_id']
         else:
-            print "onSpotTrade Error:",data
+            print (u'OKCOIN下单失败，请查询账户资金额度')
 
 
 

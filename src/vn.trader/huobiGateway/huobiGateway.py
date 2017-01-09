@@ -303,6 +303,7 @@ class Api(vnhuobi.HuobiApi):
 
         #self.strategyName=''
 
+
     #----------------------------------------------------------------------
     def qryInstruments(self):
             """查询合约"""
@@ -525,6 +526,7 @@ class Api(vnhuobi.HuobiApi):
         order.price = data['order_price']
         order.totalVolume = data['order_amount']
         order.tradeVolume = data['processed_amount']
+        order.status=tradeStatusMap[str(data['status'])]
         #order.orderTime = generateDateTimeStamp(d['order_time'])
 
         order.vtOrderID = '.'.join([self.gatewayName, order.orderID])
@@ -620,14 +622,11 @@ class Api(vnhuobi.HuobiApi):
             paramsDict["trade_password"] =self.password
         self.sendRequest(paramsDict,self.onSendOrder)
 
-        #委托订单查询
-        #self.getOrders()
         # 等待发单回调推送委托号信息
         self.orderCondition.acquire()
         self.orderCondition.wait()
         self.orderCondition.release()
         vtOrderID = '.'.join([self.gatewayName, self.lastOrderID])
-
         return vtOrderID
 
     # ----------------------------------------------------------------------
@@ -638,7 +637,7 @@ class Api(vnhuobi.HuobiApi):
                 self.lastOrderID= str(data['id'])
                 self.tradeFlag = True
         else:
-            print "test:",data['msg']
+            print (u'火币下单失败，请查询账户资金额度')
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()
