@@ -274,6 +274,12 @@ class Api(vnokcoin.OkCoinApi):
         """接口断开"""
         self.gateway.connected = True
         self.writeLog(u'服务器连接断开')
+
+        # 重新连接
+        if self.active:
+            print 'start reconnect'
+            self.reconnect()
+            print 'reconnected'
         
     #----------------------------------------------------------------------
     def onOpen(self, ws):        

@@ -30,12 +30,12 @@ class Bolling(CtaTemplate):
     # 策略参数
     bollingLength = 30
     atrFactor = 6
-    atsfactor = 6
-    atrLength = 15  # 计算ATR指标的窗口数
+    atsfactor = 9
+    atrLength = 7  # 计算ATR指标的窗口数
     maLength = 20  # 计算A均线的窗口数
     trailingPercent = 0.2  # 百分比移动止损
-    initDays = 50  # 初始化数据所用的天数
-
+    initDays = 100  # 初始化数据所用的天数
+    slip = 3       # 滑点
     #账户资金变量
     btcnum = 0
     cnynum = 0
@@ -97,8 +97,7 @@ class Bolling(CtaTemplate):
                'entryPrice',
                'upLine',
                'lowLine',
-               'longStop',
-               'shortStop',
+               'atsvalue',
                'realtimeprice',
                'intraTradeHigh',
                'intraTradeLow'
@@ -116,7 +115,6 @@ class Bolling(CtaTemplate):
         # 策略类中的这些可变对象属性可以选择不写，全都放在__init__下面，写主要是为了阅读
         # 策略时方便（更多是个编程习惯的选择）
 
-
     # ----------------------------------------------------------------------
     def onInit(self):
         """初始化策略（必须由用户继承实现）"""
@@ -126,12 +124,13 @@ class Bolling(CtaTemplate):
 
         # 载入历史数据，并采用回放计算的方式初始化策略数值
         initData = []
-        #SQL = 'SELECT open,high,low,close,volumn,date FROM okcn_btc_cny_1 ORDER BY date DESC LIMIT 1,%s'
-        SQL = 'SELECT opening_price,max_price,min_price,closing_price,volume_price,time_stamp FROM huobi_spot_btc_cny_aggregation_minute1 ORDER BY sequence DESC LIMIT 1,%s'
+        #SQL = 'SELECT open,high,low,close,volumn,date FROM okcn_btc_cny_5 ORDER BY date DESC LIMIT 1,%s'
+        SQL = 'SELECT opening_price,max_price,min_price,closing_price,volume_price,time_stamp FROM okcoincn_spot_btc_cny_aggregation_hour1 ORDER BY sequence DESC LIMIT 1,%s'
         params = [2]
 
         data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_RW_TRADING)
         '''
+        #   bitrees 数据库
         for d in data[::-1]:
             bar = CtaBarData()
             bar.open = d['open']
@@ -146,6 +145,7 @@ class Bolling(CtaTemplate):
             bar.vtSymbol = 'BTC_CNY_SPOT'
             initData.append(bar)
         '''
+        #   radarwin 数据库
         for d in data[::-1]:
             bar = CtaBarData()
             bar.open = d['opening_price']
@@ -161,46 +161,46 @@ class Bolling(CtaTemplate):
             initData.append(bar)
 
         #lasttradedata = self.readtradelog2mysql()
-        lasttradedata = False
-        if lasttradedata:
-            self.lasttradetype = lasttradedata[0][7]
-            self.lastpos = lasttradedata[0][8]
-            print 'lasttradetype is :',self.lasttradetype
-            if self.lasttradetype == None:
-                print 'this no trade before'
-                self.lasttradetype = 0
-                self.intraTradeHigh = 0
-                self.intraTradeLow = 9999999.9999
-            elif self.lasttradetype == 1:
-                if self.lastpos == 0:
-                    self.intraTradeHigh = lasttradedata[0][4]
-                    print 'last trade is long,and intratradehigh = ',self.intraTradeHigh
-                elif self.lastpos == 1:
-                    self.intraTradeHigh = float(self.getperioddata(lasttradedata[0][6],'high'))
-                    self.direction = 1
-                    self.entryPrice = lasttradedata[0][2]
-                    print 'last trade is long and not closed yet'
-
-            elif self.lasttradetype == -1:
-                if self.lastpos == 0:
-                    self.intraTradeLow = lasttradedata[0][5]
-                    print 'last trade is short,and intratradelow = ', self.intraTradeLow
-                elif self.lastpos == -1:
-                    self.intraTradeLow = float(self.getperioddata(lasttradedata[0][6],'low'))
-                    self.direction = -1
-                    self.entryPrice = lasttradedata[0][2]
-                    print 'last trade is short and not closed yet,intratradelow = ',self.intraTradeLow
-        else:
-            self.lasttradetype =0
-            self.direction = 0
-            self.lastpos = 0
-            self.intraTradeLow = 9999.99999
-            self.intraTradeHigh = 0
+        #lasttradedata = False
+        # if lasttradedata:
+        #     self.lasttradetype = lasttradedata[0][7]
+        #     self.lastpos = lasttradedata[0][8]
+        #     #print 'lasttradetype is :',self.lasttradetype
+        #     if self.lasttradetype == None:
+        #         print 'this no trade before'
+        #         self.lasttradetype = 0
+        #         self.intraTradeHigh = 0
+        #         self.intraTradeLow = 9999999.9999
+        #     elif self.lasttradetype == 1:
+        #         if self.lastpos == 0:
+        #             self.intraTradeHigh = lasttradedata[0][4]
+        #             print 'last trade is long,and intratradehigh = ',self.intraTradeHigh
+        #         elif self.lastpos == 1:
+        #             self.intraTradeHigh = float(self.getperioddata(lasttradedata[0][6],'high'))
+        #             self.direction = 1
+        #             self.entryPrice = lasttradedata[0][2]
+        #             print 'last trade is long and not closed yet'
+        #
+        #     elif self.lasttradetype == -1:
+        #         if self.lastpos == 0:
+        #             self.intraTradeLow = lasttradedata[0][5]
+        #             print 'last trade is short,and intratradelow = ', self.intraTradeLow
+        #         elif self.lastpos == -1:
+        #             self.intraTradeLow = float(self.getperioddata(lasttradedata[0][6],'low'))
+        #             self.direction = -1
+        #             self.entryPrice = lasttradedata[0][2]
+        #             print 'last trade is short and not closed yet,intratradelow = ',self.intraTradeLow
+        # else:
+        #     self.lasttradetype =0
+        #     self.direction = 0
+        #     self.lastpos = 0
+        #     self.intraTradeLow = 9999.99999
+        #     self.intraTradeHigh = 0
 
 
         for bar in initData:
             self.onBar(bar)
-        print self.intraTradeHigh,self.intraTradeLow
+        #print self.intraTradeHigh,self.intraTradeLow
         self.logger.setInfoLog("初始化")
         self.putEvent()
 
@@ -227,7 +227,7 @@ class Bolling(CtaTemplate):
 
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
         #if tickMinute != self.barMinute:    #一分钟
-        if ((tickMinute != self.barMinute and (tickMinute+1) % 5 == 0) or not self.bar):  #五分钟
+        if ((tickMinute != self.barMinute and tickMinute % 60 == 0) or not self.bar):  #五分钟
             if self.bar:
                 self.onBar(self.bar)
 
@@ -264,55 +264,59 @@ class Bolling(CtaTemplate):
         if self.trading == True:
             if self.direction > 0 and self.pos > 0:
                 self.intraTradeHigh = max(self.intraTradeHigh, bar.high)
-                self.longStop = self.intraTradeHigh - self.atrArray[-1]*self.atrFactor
-                if bar.close < self.longStop:
+                #self.longStop = self.intraTradeHigh - self.atrArray[-1]*self.atrFactor
+                if bar.close < self.atsvalue:
                     self.direction = 0
                     self.signal = 0
                     self.entryPrice = 0
                     self.lasttradetype = 1
-                    self.sell(bar.close - 1, self.lots)
-                   # if self.pos != 0:
-                     #   self.pos = 0
+                    self.sell(bar.close - self.slip, self.lots)
+                    print '平多'
+                    #if self.pos != 0:
+                        #self.pos = 0
 
             if self.direction < 0 and self.pos < 0:
                 self.intraTradeLow = min(self.intraTradeLow, bar.low)
 
-                self.shortStop = self.intraTradeLow + self.atrArray[-1]*self.atrFactor
-                if bar.close > self.shortStop:
+                #self.shortStop = self.intraTradeLow + self.atrArray[-1]*self.atrFactor
+                if bar.close > self.atsvalue:
                     self.direction = 0
                     self.signal = 0
                     self.entryPrice = 0
                     self.lasttradetype = -1
-                    self.buy(bar.close + 1, self.lots)
-                   # if self.pos != 0 :
-                       # self.pos = 0
+                    self.buy(bar.close + self.slip, self.lots)
+                    print '平空'
+                    #if self.pos != 0:
+                        #self.pos = 0
 
 
 
             # 做多
-            if self.pos == 0 and  self.buyresult  and self.direction == 0 and self.signal == 1 and bar.close > self.upLineArray[-1]:
+            if self.pos == 0 and  self.buyresult  and self.direction == 0 and self.signal == 1 and bar.close > self.upLineArray[-1] and bar.close > self.atsvalue:
                 self.direction = 1
                 self.entryPrice = bar.close
                 self.shortStop = 0
                 self.intraTradeHigh = bar.close
                 self.intraTradeHigh = max(self.intraTradeHigh, bar.high)
                 self.lasttradetype = 1
-                self.buy(bar.close+1, self.lots)
+                self.buy(bar.close + self.slip, self.lots)
+                print '做多'
                 #if self.pos == 0:
-                   # self.pos = self.lots
+                    #self.pos = self.lots
             elif self.pos == 0 and not self.buyresult:
                 print "账户余额不足，无法买入"
             # 做空
-            if self.pos == 0 and self.sellresult  and self.direction == 0 and self.signal == -1 and bar.close < self.lowLineArray[-1]:
+            if self.pos == 0 and self.sellresult  and self.direction == 0 and self.signal == -1 and bar.close < self.lowLineArray[-1] and bar.close < self.atsvalue:
                 self.direction = -1
                 self.entryPrice = bar.close
                 self.longStop = 0
                 self.intraTradeLow = bar.close
                 self.intraTradeLow = min(self.intraTradeLow, bar.low)
                 self.lasttradetype = -1
-                self.sell(bar.close-1, self.lots)
-               # if self.pos == 0:
-                  #  self.pos = 0-self.lots
+                self.sell(bar.close - self.slip, self.lots)
+                print '做空'
+                #if self.pos == 0:
+                    #self.pos = 0-self.lots
             elif self.pos == 0 and not self.sellresult:
                  print "账户币不足，无法卖出"
     # ----------------------------------------------------------------------
@@ -334,10 +338,11 @@ class Bolling(CtaTemplate):
         self.typpArray =(self.closeArray+self.highArray+self.lowArray)/3
         self.typp = (bar.close+bar.high+bar.low)/3
         self.bufferCount += 1
+        if self.bufferCount == 1:
+            self.atsvalue = self.closeArray[-1]     # 初始化atrts
 
-        if self.bufferCount < self.bufferSize:
-            print self.bufferCount, self.bufferSize
-            self.atsvalue = self.closeArray[-1]   # 初始化atrts
+        if self.bufferCount < self.atrLength:
+            print self.bufferCount, self.atrLength
             return
 
 
@@ -349,6 +354,7 @@ class Bolling(CtaTemplate):
 
         self.atrArray[0:self.bufferSize - 1] = self.atrArray[1:self.bufferSize]
         self.atrArray[-1] = self.atrValue
+        #print 'atr:',self.atrArray[-1],self.atrValue,self.bufferCount
 
         if self.closeArray[-1] > self.atsvalue:
             if self.closeArray[-2] < self.atsvalue:
@@ -360,8 +366,13 @@ class Bolling(CtaTemplate):
                 self.atsvalue = self.closeArray[-1] + self.atsfactor * self.atrArray[-1]
             else:
                 self.atsvalue = min(self.atsvalue,self.closeArray[-1] + self.atsfactor * self.atrArray[-1])
+        #print 'close:',self.closeArray[-1]
+        #print 'atsvalue:',self.atsvalue
 
-        #print self.atsvalue
+        if self.bufferCount < self.bollingLength:
+            print self.bufferCount, self.bollingLength
+            return
+
         self.trendMaArray = talib.MA(self.typpArray,self.maLength)
         self.trendMa = self.trendMaArray[-1]
         self.lasttrendMa = self.trendMaArray[-2]
@@ -423,7 +434,7 @@ class Bolling(CtaTemplate):
                     self.signal = 0
 
         #self.onAccount()
-        #print self.buyresult, self.sellresult
+        print self.buyresult, self.sellresult
         # 发出状态更新事件
         self.putEvent()
     # ----------------------------------------------------------------------
@@ -463,6 +474,7 @@ if __name__ == '__main__':
     # ----------------------------------------------------------------------
     # 提供直接双击回测的功能
     # 导入PyQt4的包是为了保证matplotlib使用PyQt4而不是PySide，防止初始化出错
+    '''
     from ctaBacktesting import *
     from PyQt4 import QtCore, QtGui
 
@@ -499,4 +511,41 @@ if __name__ == '__main__':
     # setting.addParameter('atrLength', 11, 12, 1)    # 增加第一个优化参数atrLength，起始11，结束12，步进1
     # setting.addParameter('atrMa', 20, 30, 5)        # 增加第二个优化参数atrMa，起始20，结束30，步进1
     # engine.runOptimization(AtrRsiStrategy, setting) # 运行优化函数，自动输出结果
-
+    '''
+    conn = pymysql.connect(host='10.10.10.180',user='rw_trading',passwd='Abcd1234',db='dqpt',port=3306)
+    cur = conn.cursor()
+    backday = 100
+    cur.execute('SELECT sequence,opening_price,closing_price,max_price,min_price,volume_quantity,volume_price FROM (SELECT * FROM okcoincn_spot_btc_cny_aggregation_minute1 ORDER BY sequence DESC LIMIT 0,100)  AS total ORDER BY sequence ASC ')
+    data = cur.fetchall()
+    datalength = len(data)
+    h = np.zeros(backday)
+    l = np.zeros(backday)
+    o = np.zeros(backday)
+    c = np.zeros(backday)
+    volume = np.zeros(backday)
+    date = []
+    for i in range(backday):
+        o[i] = (data[i][1])
+        h[i] = (data[i][3])
+        l[i] = (data[i][4])
+        c[i] = (data[i][2])
+        volume[i] = (data[i][5])
+        date.append(data[i][0])
+    cur.close()
+    conn.close()
+#     h = h[::-1]
+#     l = l[::-1]
+#     c = c[::-1]
+#     o = o[::-1]
+    atr = talib.ATR(h,l,c,15)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

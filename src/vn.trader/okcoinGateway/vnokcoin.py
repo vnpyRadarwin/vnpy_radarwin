@@ -167,6 +167,22 @@ class OkCoinApi(object):
         self.thread.start()
         
     #----------------------------------------------------------------------
+    def reconnect(self):
+        """重新连接"""
+        # 首先关闭之前的连接
+        self.close()
+
+        # 再执行重连任务
+        self.ws = websocket.WebSocketApp(self.host,
+                                         on_message=self.onMessage,
+                                         on_error=self.onError,
+                                         on_close=self.onClose,
+                                         on_open=self.onOpen)
+
+        self.thread = Thread(target=self.ws.run_forever)
+        self.thread.start()
+
+    # ----------------------------------------------------------------------
     def sendMarketDataRequest(self, channel):
         """发送行情请求"""
         # 生成请求
