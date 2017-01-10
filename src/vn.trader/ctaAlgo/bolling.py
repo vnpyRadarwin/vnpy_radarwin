@@ -42,6 +42,7 @@ class Bolling(CtaTemplate):
     # 策略变量
     bar = None  # K线对象
     barMinute = EMPTY_STRING  # K线当前的分钟
+    barHour = EMPTY_STRING  # K线当前的小时
     datacount = 0
     bufferSize = 30  # 需要缓存的数据的大小
     bufferCount = 0  # 目前已经缓存了的数据的计数
@@ -223,11 +224,13 @@ class Bolling(CtaTemplate):
         """收到行情TICK推送（必须由用户继承实现）"""
         # 计算K线
         tickMinute = tick.datetime.minute
-        #print tickMinute , self.barMinute
+        tickHour=tick.datetime.hour
+        #print tickHour , self.barHour
 
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
         #if tickMinute != self.barMinute:    #一分钟
-        if ((tickMinute != self.barMinute and tickMinute % 60 == 0) or not self.bar):  #五分钟
+        #if ((tickMinute != self.barMinute and tickMinute % 60 == 0) or not self.bar):  #五分钟
+        if tickHour != self.barHour or not self.bar:  #1小时
             if self.bar:
                 self.onBar(self.bar)
 
@@ -246,8 +249,9 @@ class Bolling(CtaTemplate):
             bar.datetime = tick.datetime  # K线的时间设为第一个Tick的时间
 
             self.bar = bar  # 这种写法为了减少一层访问，加快速度
-            self.barMinute = tickMinute  # 更新当前的分钟
-            print 'K线已更新，最近K线时间：',self.barMinute,bar.datetime,tickMinute
+            #self.barMinute = tickMinute  # 更新当前的分钟
+            self.barHour = tickHour
+            print 'K线已更新，最近K线时间：',self.barHour,bar.datetime,tickHour
             #print 'btc:',self.btcnum,'cny:',self.cnynum
         else:  # 否则继续累加新的K线
             bar = self.bar  # 写法同样为了加快速度
@@ -342,7 +346,7 @@ class Bolling(CtaTemplate):
             self.atsvalue = self.closeArray[-1]     # 初始化atrts
 
         if self.bufferCount < self.atrLength:
-            print self.bufferCount, self.atrLength
+            print "self.bufferCount, self.atrLength",self.bufferCount, self.atrLength
             return
 
 
@@ -370,7 +374,7 @@ class Bolling(CtaTemplate):
         #print 'atsvalue:',self.atsvalue
 
         if self.bufferCount < self.bollingLength:
-            print self.bufferCount, self.bollingLength
+            print "self.bufferCount, self.bollingLength:",self.bufferCount, self.bollingLength
             return
 
         self.trendMaArray = talib.MA(self.typpArray,self.maLength)
@@ -434,7 +438,7 @@ class Bolling(CtaTemplate):
                     self.signal = 0
 
         #self.onAccount()
-        print self.buyresult, self.sellresult
+        print "self.buyresult, self.sellresult:",self.buyresult, self.sellresult
         # 发出状态更新事件
         self.putEvent()
     # ----------------------------------------------------------------------
