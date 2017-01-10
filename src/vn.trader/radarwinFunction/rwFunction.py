@@ -3,6 +3,8 @@
 """
 包含一些开发中常用的函数
 """
+import httplib
+import json
 from time import sleep
 
 import requests
@@ -11,7 +13,7 @@ TRADE_TYPE_BUY = 'buy'
 TRADE_TYPE_SELL = 'sell'
 SYMBOL_CNY='cny'
 SYMBOL_BTC='btc'
-
+OKCOINRESTURL = 'www.okcoin.cn'
 
 #----------------------------------------------------------------------
 # 根据当前账户信息判断是否可买卖
@@ -51,6 +53,23 @@ def getPosition_1(params, positionDict, price, pos):
             if posData< pos:
                 return False
     return True
+#----------------------------------------------------------------------
+#okcoin的K线数据取得
+def kline_okcoin(symbol='btc_cny', type='1hour',size=300):
+    KLILNE_RESOURCE = "/api/v1/kline.do"
+    params = ''
+    if symbol:
+        params = 'symbol=%(symbol)s&type=%(type)s&size=%(size)s' % {'symbol': symbol, 'type': type, 'size': size}
+    return __httpGet(OKCOINRESTURL, KLILNE_RESOURCE, params)
+
+def __httpGet(url,resource,params=''):
+    conn = httplib.HTTPSConnection(url, timeout=10)
+    conn.request("GET",resource + '?' + params)
+    response = conn.getresponse()
+    data = response.read().decode('utf-8')
+    return json.loads(data)
+
+
 #----------------------------------------------------------------------
 # 断线重连机制
 

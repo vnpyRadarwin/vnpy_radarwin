@@ -109,7 +109,7 @@ class Bolling(CtaTemplate):
         """Constructor"""
         super(Bolling, self).__init__(ctaEngine, setting)
         self.logger = rwLoggerFunction()
-        self.dbCon = rwDbConnection()
+        #self.dbCon = rwDbConnection()
         self.positionDict = {}
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
@@ -126,40 +126,56 @@ class Bolling(CtaTemplate):
         # 载入历史数据，并采用回放计算的方式初始化策略数值
         initData = []
         #SQL = 'SELECT open,high,low,close,volumn,date FROM okcn_btc_cny_5 ORDER BY date DESC LIMIT 1,%s'
-        SQL = 'SELECT opening_price,max_price,min_price,closing_price,volume_price,time_stamp FROM okcoincn_spot_btc_cny_aggregation_hour1 ORDER BY sequence DESC LIMIT 1,%s'
-        params = [2]
+        #SQL = 'SELECT opening_price,max_price,min_price,closing_price,volume_price,time_stamp FROM okcoincn_spot_btc_cny_aggregation_hour1 ORDER BY sequence DESC LIMIT 1,%s'
 
-        data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_RW_TRADING)
-        '''
+        #data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_RW_TRADING)
+        #K线历史数据取得
+        data=kline_okcoin()
+
+        for d in data[::-1]:
+            bar = CtaBarData()
+            bar.open = d[1]
+            bar.high = d[2]
+            bar.low = d[3]
+            bar.close = d[4]
+            bar.volume = d[5]
+            bar.datetime = d[0]
+            bar.date = d[0]
+            bar.time = d[0]
+            bar.symbol = 'BTC_CNY_SPOT'
+            bar.vtSymbol = 'BTC_CNY_SPOT'
+            initData.append(bar)
+
+
         #   bitrees 数据库
-        for d in data[::-1]:
-            bar = CtaBarData()
-            bar.open = d['open']
-            bar.high = d['high']
-            bar.low = d['low']
-            bar.close = d['close']
-            bar.volume = d['volumn']
-            bar.datetime=d['date']
-            bar.date=d['date']
-            bar.time = d['date']
-            bar.symbol = 'BTC_CNY_SPOT'
-            bar.vtSymbol = 'BTC_CNY_SPOT'
-            initData.append(bar)
-        '''
+        # for d in data[::-1]:
+        #     bar = CtaBarData()
+        #     bar.open = d['open']
+        #     bar.high = d['high']
+        #     bar.low = d['low']
+        #     bar.close = d['close']
+        #     bar.volume = d['volumn']
+        #     bar.datetime=d['date']
+        #     bar.date=d['date']
+        #     bar.time = d['date']
+        #     bar.symbol = 'BTC_CNY_SPOT'
+        #     bar.vtSymbol = 'BTC_CNY_SPOT'
+        #     initData.append(bar)
+
         #   radarwin 数据库
-        for d in data[::-1]:
-            bar = CtaBarData()
-            bar.open = d['opening_price']
-            bar.high = d['max_price']
-            bar.low = d['min_price']
-            bar.close = d['closing_price']
-            bar.volume = d['volume_price']
-            bar.datetime=d['time_stamp']
-            bar.date=d['time_stamp']
-            bar.time = d['time_stamp']
-            bar.symbol = 'BTC_CNY_SPOT'
-            bar.vtSymbol = 'BTC_CNY_SPOT'
-            initData.append(bar)
+        # for d in data[::-1]:
+        #     bar = CtaBarData()
+        #     bar.open = d['opening_price']
+        #     bar.high = d['max_price']
+        #     bar.low = d['min_price']
+        #     bar.close = d['closing_price']
+        #     bar.volume = d['volume_price']
+        #     bar.datetime=d['time_stamp']
+        #     bar.date=d['time_stamp']
+        #     bar.time = d['time_stamp']
+        #     bar.symbol = 'BTC_CNY_SPOT'
+        #     bar.vtSymbol = 'BTC_CNY_SPOT'
+        #     initData.append(bar)
 
         #lasttradedata = self.readtradelog2mysql()
         #lasttradedata = False
