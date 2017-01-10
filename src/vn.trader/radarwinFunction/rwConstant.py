@@ -34,6 +34,14 @@ CONNECTION_MARK='_'
 STRADDLE_INERFACE_1='HUOBI'
 STRADDLE_INERFACE_2='OKCOIN'
 
+
+#K线类型
+K_LINE_STYLE_DAY='day'
+K_LINE_STYLE_HOUR='hour'
+K_LINE_STYLE_MINUTE='min'
+K_LINE_STYLE_WEEK='week'
+
+
 #SQL
 #---------------------------------------------------------------------------
 #GET_STRATEGY_MASTER = 'SELECT sm.strategy_name as name , sm.strategy_class as className,sai.symbol as vtSymbol,ai.exchange_name as exchange_name FROM strategy_master sm,' \
@@ -41,4 +49,6 @@ STRADDLE_INERFACE_2='OKCOIN'
 
 GET_STRATEGY_MASTER='SELECT sm.strategy_name as name , sm.strategy_class as className,sm.symbol as vtSymbol FROM strategy_master sm WHERE sm.flag = 1'
 
-GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai WHERE ai.exchange_name=%s and ai.flag = 1'
+GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info_huotou ai WHERE ai.exchange_name=%s and ai.flag = 1'
+
+#GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai WHERE ai.exchange_name=%s and ai.flag = 1'

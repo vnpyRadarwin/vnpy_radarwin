@@ -15,6 +15,19 @@ SYMBOL_CNY='cny'
 SYMBOL_BTC='btc'
 OKCOINRESTURL = 'www.okcoin.cn'
 
+THREAD_INTERVAL=0.5
+
+HUOBI_KLINE_DICT={}
+HUOBI_KLINE_DICT['1min']=001
+HUOBI_KLINE_DICT['5min']=005
+HUOBI_KLINE_DICT['15min']=015
+HUOBI_KLINE_DICT['30min']=030
+HUOBI_KLINE_DICT['60min']=060
+HUOBI_KLINE_DICT['1day']=100
+HUOBI_KLINE_DICT['1week']=200
+
+
+
 #----------------------------------------------------------------------
 # 根据当前账户信息判断是否可买卖
 #参数
@@ -55,11 +68,19 @@ def getPosition_1(params, positionDict, price, pos):
     return True
 #----------------------------------------------------------------------
 #okcoin的K线数据取得
-def kline_okcoin(symbol='btc_cny', type='1hour',size=300):
+def get_kline(interval=1,type='min',size=300,gatewayName='OKCOIN'):
+    if gatewayName=='OKCOIN':
+        data=__kline_okcoin(interval,type,size)
+        return data
+    elif gatewayName=='HUOBI':
+        data=__kline_huobi(interval,type,size)
+        return data
+
+def __kline_okcoin(interval,type,size):
     KLILNE_RESOURCE = "/api/v1/kline.do"
-    params = ''
-    if symbol:
-        params = 'symbol=%(symbol)s&type=%(type)s&size=%(size)s' % {'symbol': symbol, 'type': type, 'size': size}
+    kline=str(interval)+type
+
+    params = 'symbol=%(symbol)s&type=%(type)s&size=%(size)s' % {'symbol': 'btc_cny', 'type': kline, 'size': size}
     return __httpGet(OKCOINRESTURL, KLILNE_RESOURCE, params)
 
 def __httpGet(url,resource,params=''):
@@ -68,6 +89,34 @@ def __httpGet(url,resource,params=''):
     response = conn.getresponse()
     data = response.read().decode('utf-8')
     return json.loads(data)
+
+def __kline_huobi(interval,type,size):
+    HOST_URL = 'http://api.huobi.com'
+    HOST_MARKET_CNY = 'staticmarket'
+    #HOST_MARKET_USD = 'usdmarket'
+    JSON_NAME = '%s_kline_%s_json.js'
+
+    try:
+        kline = str(interval) + type
+        if kline in HUOBI_KLINE_DICT:
+            kline=HUOBI_KLINE_DICT[kline]
+        else:
+            print u"没有该K线类型",kline
+            return
+        # 实时行情数据文件名
+        fileName = JSON_NAME % ('btc', kline)
+        # 实时行情数据地址
+        klineURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName+ '?' +'length='+size
+        result = requests.post(klineURL)
+        return result
+    except Exception, e:
+        sleep(THREAD_INTERVAL)
+        try:
+            result = requests.post(klineURL)
+            return result
+        except Exception, e:
+            print "huobi kline Data Connect Fail"
+            return False
 
 
 #----------------------------------------------------------------------

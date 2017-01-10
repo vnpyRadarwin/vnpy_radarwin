@@ -129,8 +129,8 @@ class Bolling(CtaTemplate):
         #SQL = 'SELECT opening_price,max_price,min_price,closing_price,volume_price,time_stamp FROM okcoincn_spot_btc_cny_aggregation_hour1 ORDER BY sequence DESC LIMIT 1,%s'
 
         #data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_RW_TRADING)
-        #K线历史数据取得
-        data=kline_okcoin()
+        #K线历史数据取得(如1分钟：interval=1，tyep=K_LINE_STYLE_MINUTE)
+        data=get_kline(interval=1,type=K_LINE_STYLE_MINUTE)
 
         for d in data[::-1]:
             bar = CtaBarData()
