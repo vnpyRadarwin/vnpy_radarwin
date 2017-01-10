@@ -25,8 +25,8 @@ from radarwinFunction.rwFunction import *
 class Bolling(CtaTemplate):
     """布林带突破系统"""
     className = 'Bolling'
-    author = u'vista'
-    tablename = 'bolling_okcoin_test'
+    author = u'panhao'
+    tablename = 'bolling_trade_list_panhao'
     # 策略参数
     bollingLength = 30
     atrFactor = 6
@@ -109,7 +109,7 @@ class Bolling(CtaTemplate):
         """Constructor"""
         super(Bolling, self).__init__(ctaEngine, setting)
         self.logger = rwLoggerFunction()
-        #self.dbCon = rwDbConnection()
+        self.dbCon = rwDbConnection()
         self.positionDict = {}
         # 注意策略类中的可变对象属性（通常是list和dict等），在策略初始化时需要重新创建，
         # 否则会出现多个策略实例之间数据共享的情况，有可能导致潜在的策略逻辑错误风险，
@@ -346,7 +346,6 @@ class Bolling(CtaTemplate):
         for orderID in self.orderList:
             self.cancelOrder(orderID)
         self.orderList = []
-
         # 保存K线数据
         self.closeArray[0:self.bufferSize - 1] = self.closeArray[1:self.bufferSize]
         self.highArray[0:self.bufferSize - 1] = self.highArray[1:self.bufferSize]
