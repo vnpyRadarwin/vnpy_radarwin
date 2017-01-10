@@ -130,7 +130,7 @@ class Bolling(CtaTemplate):
 
         #data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_RW_TRADING)
         #K线历史数据取得(如1分钟：interval=1，tyep=K_LINE_STYLE_MINUTE)
-        data=get_kline(interval=1,type=K_LINE_STYLE_MINUTE)
+        data=get_kline(interval=1,type=K_LINE_STYLE_HOUR)
 
         for d in data[::-1]:
             bar = CtaBarData()
