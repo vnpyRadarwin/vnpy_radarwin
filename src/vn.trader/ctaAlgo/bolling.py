@@ -132,7 +132,7 @@ class Bolling(CtaTemplate):
         #K线历史数据取得(如1分钟：interval=1，tyep=K_LINE_STYLE_MINUTE)
         data=get_kline(interval=1,type=K_LINE_STYLE_HOUR)
 
-        for d in data[::-1]:
+        for d in data:
             bar = CtaBarData()
             bar.open = d[1]
             bar.high = d[2]
