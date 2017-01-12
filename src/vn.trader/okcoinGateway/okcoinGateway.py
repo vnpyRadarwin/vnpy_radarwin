@@ -35,10 +35,10 @@ directionMapReverse = {v: k for k, v in directionMap.items()}
 # 委托状态印射
 statusMap = {}
 statusMap[-1] = STATUS_CANCELLED
-statusMap[0] = STATUS_NOTTRADED
+statusMap[0] = STATUS_WAITTING
 statusMap[1] = STATUS_PARTTRADED
 statusMap[2] = STATUS_ALLTRADED
-statusMap[4] = STATUS_UNKNOWN
+statusMap[4] = STATUS_PROCESSING
 
 ############################################
 ## 交易合约代码
@@ -497,6 +497,9 @@ class Api(vnokcoin.OkCoinApi):
         
         # 委托信息
         orderID = str(rawData['orderId'])
+        #等待成交不发送
+        if statusMap[rawData['status']]==STATUS_WAITTING:
+            return
         if orderID not in self.orderDict:
             order = VtOrderData()
             order.gatewayName = self.gatewayName

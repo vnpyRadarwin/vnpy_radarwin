@@ -8,6 +8,7 @@ import urllib
 import requests
 from threading import Thread
 from rwFunction import *
+from weixinWarning import *
 
 
 HOST_URL='http://api.huobi.com'
@@ -152,6 +153,8 @@ class HuobiApi(object):
                  result = requests.post(tickerURL)
              except Exception, e:
                  print "Tick Data Connect Fail"
+                 sendMessage=u'火币tick数据连接中断,1小时后重新连接'
+                 send_msg('5',sendMessage)
                  tickError = True
 
         return result, tickError

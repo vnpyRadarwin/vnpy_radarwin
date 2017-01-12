@@ -227,7 +227,7 @@ class CtaEngine_2(object):
         
         if order.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[order.vtOrderID]            
-            strategy.onOrder(order)
+            strategy.onOrder_huobi(order)
 
     # ----------------------------------------------------------------------
     def processOrderEvent_okcoin(self, event):
@@ -236,24 +236,24 @@ class CtaEngine_2(object):
 
         if order.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[order.vtOrderID]
-            strategy.onOrder(order)
+            strategy.onOrder_okcoin(order)
     
     #----------------------------------------------------------------------
-    def processTradeEvent(self, event):
+    def processTradeEvent_huobi(self, event):
         """处理成交推送"""
         trade = event.dict_['data']
-        
+
         if trade.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[trade.vtOrderID]
-            
+
             # 计算策略持仓
             if trade.direction == DIRECTION_LONG:
                 strategy.pos += trade.volume
             else:
                 strategy.pos -= trade.volume
-            
-            strategy.onTrade(trade)
-            
+
+            strategy.onTrade_huobi(trade)
+
         # 更新持仓缓存数据
         if trade.vtSymbol in self.tickStrategyDict:
             posBuffer = self.posBufferDict.get(trade.vtSymbol, None)
@@ -261,8 +261,33 @@ class CtaEngine_2(object):
                 posBuffer = PositionBuffer()
                 posBuffer.vtSymbol = trade.vtSymbol
                 self.posBufferDict[trade.vtSymbol] = posBuffer
-            posBuffer.updateTradeData(trade)            
-            
+            posBuffer.updateTradeData(trade)
+
+    # ----------------------------------------------------------------------
+    def processTradeEvent_okcoin(self, event):
+        """处理成交推送"""
+        trade = event.dict_['data']
+
+        if trade.vtOrderID in self.orderStrategyDict:
+            strategy = self.orderStrategyDict[trade.vtOrderID]
+
+            # 计算策略持仓
+            if trade.direction == DIRECTION_LONG:
+                strategy.pos += trade.volume
+            else:
+                strategy.pos -= trade.volume
+
+            strategy.onTrade_okcoin(trade)
+
+        # 更新持仓缓存数据
+        if trade.vtSymbol in self.tickStrategyDict:
+            posBuffer = self.posBufferDict.get(trade.vtSymbol, None)
+            if not posBuffer:
+                posBuffer = PositionBuffer()
+                posBuffer.vtSymbol = trade.vtSymbol
+                self.posBufferDict[trade.vtSymbol] = posBuffer
+            posBuffer.updateTradeData(trade)
+
     #----------------------------------------------------------------------
     def processPositionEvent_huobi(self, event):
         """处理持仓推送"""
@@ -320,8 +345,11 @@ class CtaEngine_2(object):
         self.eventEngine.register(EVENT_POSITION + "HUOBI", self.processPositionEvent_huobi)
         self.eventEngine.register(EVENT_POSITION + "OKCOIN", self.processPositionEvent_okcoin)
         #
-        # self.eventEngine.register(EVENT_ORDER + "HUOBI", self.processOrderEvent_huobi)
-        # self.eventEngine.register(EVENT_ORDER + "OKCOIN", self.processOrderEvent_okcoin)
+        self.eventEngine.register(EVENT_ORDER + "HUOBI", self.processOrderEvent_huobi)
+        self.eventEngine.register(EVENT_ORDER + "OKCOIN", self.processOrderEvent_okcoin)
+
+        self.eventEngine.register(EVENT_TRADE + "HUOBI", self.processTradeEvent_huobi)
+        self.eventEngine.register(EVENT_TRADE + "OKCOIN", self.processTradeEvent_okcoin)
  
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):

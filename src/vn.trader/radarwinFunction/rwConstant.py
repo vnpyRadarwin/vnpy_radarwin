@@ -49,6 +49,6 @@ K_LINE_STYLE_WEEK='week'
 
 GET_STRATEGY_MASTER='SELECT sm.strategy_name as name , sm.strategy_class as className,sm.symbol as vtSymbol FROM strategy_master sm WHERE sm.flag = 1'
 
-GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info_huotou ai WHERE ai.exchange_name=%s and ai.flag = 1'
+#GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info_huotou ai WHERE ai.exchange_name=%s and ai.flag = 1'
 
-#GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai WHERE ai.exchange_name=%s and ai.flag = 1'
+GET_ACCOUNT_INFO = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai WHERE ai.exchange_name=%s and ai.flag = 1'
