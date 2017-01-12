@@ -302,7 +302,6 @@ class Price_Different(CtaTemplate_2):
         #     # self.orderCondition.release()
         # elif order.gatewayName == "OKCOIN":
         #     self.orderDict[order.gatewayName] = order
-        #print 'orderinfo:'+ order.direction, order.price, order.tradedVolume
 
     # ----------------------------------------------------------------------
     def onOrder_huobi(self, order):
