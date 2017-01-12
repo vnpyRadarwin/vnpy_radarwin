@@ -151,6 +151,13 @@ class MainEngine(object):
         except Exception, e:
             print e
 
+        try:
+            from exchangeGateway.exchangeGateway import ExchangeGateway
+            self.addGateway(ExchangeGateway, 'EXCHANGE')
+            self.gatewayDict['EXCHANGE'].setQryEnabled(True)
+        except Exception, e:
+            print e
+
     #----------------------------------------------------------------------
     def addGateway(self, gateway, gatewayName=None):
         """创建接口"""
