@@ -89,10 +89,10 @@ tradeTypeMap['4'] = TRADE_TYPE_MARKET_SELL
 ############################################
 tradeStatusMap = {}
 
-tradeStatusMap['0'] = TRADER_STATUS_ZERO
-tradeStatusMap['1'] = TRADER_STATUS_ONE
-tradeStatusMap['2'] = TRADER_STATUS_TWO
-tradeStatusMap['3'] = TRADER_STATUS_THREE
+tradeStatusMap['0'] = TRADER_STATUS_NO_DEAL
+tradeStatusMap['1'] = TRADER_STATUS_PART_DEAL
+tradeStatusMap['2'] = TRADER_STATUS_DEAL
+tradeStatusMap['3'] = TRADER_STATUS_CANEL
 
 
 ############################################
@@ -534,7 +534,7 @@ class Api(vnhuobi.HuobiApi):
         self.gateway.onOrder(order)
 
         #self.orderDict[order.orderID] = order
-        if 'status' in data and tradeStatusMap[str(data['status'])]==TRADER_STATUS_TWO:
+        if 'status' in data and tradeStatusMap[str(data['status'])]==TRADER_STATUS_DEAL:
             trade = VtTradeData()
             trade.gatewayName = self.gatewayName
 
