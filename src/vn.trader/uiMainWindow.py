@@ -101,11 +101,17 @@ class MainWindow(QtGui.QMainWindow):
         connectOkcoinAction = QtGui.QAction(u'连接OKCOIN', self)
         connectOkcoinAction.triggered.connect(self.connectOkcoin)
 
+        connectOkcoinAction_rest = QtGui.QAction(u'连接OKCOIN(REST)', self)
+        connectOkcoinAction_rest.triggered.connect(self.connectOkcoin_rest)
+
         connectChBtcAction = QtGui.QAction(u'连接中国比特币', self)
         connectChBtcAction.triggered.connect(self.connectChBtc)
 
         connectHuobiAction = QtGui.QAction(u'连接火币', self)
         connectHuobiAction.triggered.connect(self.connectHuobi)
+
+        connectExchangeAction = QtGui.QAction(u'连接链行', self)
+        connectExchangeAction.triggered.connect(self.connectExchange)
 
         connectDbAction = QtGui.QAction(u'连接数据库', self)
         connectDbAction.triggered.connect(self.mainEngine.dbConnect)
@@ -171,10 +177,14 @@ class MainWindow(QtGui.QMainWindow):
             sysMenu.addAction(connectOandaAction)
         if 'OKCOIN' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectOkcoinAction)
+        if 'OKCOIN_REST' in self.mainEngine.gatewayDict:
+            sysMenu.addAction(connectOkcoinAction_rest)
         if 'CHBTC' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectChBtcAction)
         if 'HUOBI' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectHuobiAction)
+        if 'EXCHANGE' in self.mainEngine.gatewayDict:
+            sysMenu.addAction(connectExchangeAction)
         sysMenu.addSeparator()
         if 'Wind' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectWindAction)
@@ -295,8 +305,13 @@ class MainWindow(QtGui.QMainWindow):
     #----------------------------------------------------------------------
     def connectOkcoin(self):
         """连接OKCOIN"""
-        self.mainEngine.connect('OKCOIN')    
-        
+        self.mainEngine.connect('OKCOIN')
+
+    # ----------------------------------------------------------------------
+    def connectOkcoin_rest(self):
+        """连接OKCOIN"""
+        self.mainEngine.connect('OKCOIN_REST')
+
     #----------------------------------------------------------------------
 
     def connectChBtc(self):
@@ -308,6 +323,11 @@ class MainWindow(QtGui.QMainWindow):
     def connectHuobi(self):
         """连接中国比特币"""
         self.mainEngine.connect('HUOBI')
+    # ----------------------------------------------------------------------
+
+    def connectExchange(self):
+        """连接中国比特币"""
+        self.mainEngine.connect('EXCHANGE')
 
     # ----------------------------------------------------------------------
     def test(self):

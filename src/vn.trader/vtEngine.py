@@ -145,6 +145,13 @@ class MainEngine(object):
             print e
 
         try:
+            from okcoinGateway_rest.okcoinGateway_rest import OkcoinGateway
+            self.addGateway(OkcoinGateway, 'OKCOIN_REST')
+            self.gatewayDict['OKCOIN_REST'].setQryEnabled(True)
+        except Exception, e:
+            print e
+
+        try:
             from huobiGateway.huobiGateway import HuobiGateway
             self.addGateway(HuobiGateway, 'HUOBI')
             self.gatewayDict['HUOBI'].setQryEnabled(True)
