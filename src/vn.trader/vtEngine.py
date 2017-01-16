@@ -137,17 +137,17 @@ class MainEngine(object):
         except Exception, e:
             print e
         
-        try:
-            from okcoinGateway.okcoinGateway import OkcoinGateway
-            self.addGateway(OkcoinGateway, 'OKCOIN')
-            self.gatewayDict['OKCOIN'].setQryEnabled(True)
-        except Exception, e:
-            print e
+        # try:
+        #     from okcoinGateway.okcoinGateway import OkcoinGateway
+        #     self.addGateway(OkcoinGateway, 'OKCOIN')
+        #     self.gatewayDict['OKCOIN'].setQryEnabled(True)
+        # except Exception, e:
+        #     print e
 
         try:
             from okcoinGateway_rest.okcoinGateway_rest import OkcoinGateway
-            self.addGateway(OkcoinGateway, 'OKCOIN_REST')
-            self.gatewayDict['OKCOIN_REST'].setQryEnabled(True)
+            self.addGateway(OkcoinGateway, 'OKCOIN')
+            self.gatewayDict['OKCOIN'].setQryEnabled(True)
         except Exception, e:
             print e
 
