@@ -20,6 +20,8 @@ from vtGateway import *
 from rwConstant import *
 from rwDbConnection import *
 from time import localtime
+from radarwinFunction.rwLoggerFunction import *
+
 # 价格类型映射
 priceTypeMap = {}
 priceTypeMap['1'] = (DIRECTION_LONG, PRICETYPE_LIMITPRICE)
@@ -303,6 +305,7 @@ class Api(vnhuobi.HuobiApi):
 
         #self.strategyName=''
 
+        self.logger = rwLoggerFunction()
 
     #----------------------------------------------------------------------
     def qryInstruments(self):
@@ -496,6 +499,7 @@ class Api(vnhuobi.HuobiApi):
         #self.writeLog(u'委托信息查询完成')
     # ----------------------------------------------------------------------
     def getTrades(self):
+        #print "huobi getTrades start"
         self.tradeFlag = False
         """查询最近的成交订单"""
         timestamp = long(time.time())
@@ -506,9 +510,11 @@ class Api(vnhuobi.HuobiApi):
         del paramsDict["secret_key"]
         paramsDict['sign'] = sign
         self.sendRequest(paramsDict, self.onGetTrade)
+        #print "huobi getTrades end"
 
     #----------------------------------------------------------------------
     def onGetTrade(self, data):
+        #print "huobi onGetTrade start"
         """回调函数"""
         if len(data)==0:
             return
@@ -533,6 +539,7 @@ class Api(vnhuobi.HuobiApi):
 
         self.gateway.onOrder(order)
 
+        #print "huobi onGetTrade gateway.onOrder start"
         #self.orderDict[order.orderID] = order
         if 'status' in data and tradeStatusMap[str(data['status'])]==TRADER_STATUS_DEAL:
             trade = VtTradeData()
@@ -558,7 +565,7 @@ class Api(vnhuobi.HuobiApi):
             self.gateway.onTrade(trade)
 
             #self.orderDict[trade.orderID] = trade
-
+        #print "huobi onGetTrade end"
         self.writeLog(u'成交信息查询完成')
 
     # ----------------------------------------------------------------------
@@ -601,6 +608,7 @@ class Api(vnhuobi.HuobiApi):
     # ----------------------------------------------------------------------
 
     def sendOrder(self, params):
+        #print "huobi sendOrder start"
         self.lastOrderID = ''
         """发送委托"""
         timestamp = long(time.time())
@@ -620,28 +628,32 @@ class Api(vnhuobi.HuobiApi):
         paramsDict['sign']=sign
         if self.trade_password:
             paramsDict["trade_password"] =self.password
+        #print "huobi sendOrder start_2"
         self.sendRequest(paramsDict,self.onSendOrder)
-
+        #print "huobi sendOrder start_3"
         # 等待发单回调推送委托号信息
         self.orderCondition.acquire()
         self.orderCondition.wait()
         self.orderCondition.release()
         vtOrderID = '.'.join([self.gatewayName, self.lastOrderID])
+        #print "huobi sendOrder end"
         return vtOrderID
 
     # ----------------------------------------------------------------------
     def onSendOrder(self,data):
-
-        if 'result' in data:
-            if data['result'] == 'success':
+        print "huobi onSendOrder start"
+        if 'result' in data and data['result'] == 'success':
                 self.lastOrderID= str(data['id'])
                 self.tradeFlag = True
+                #self.logger.setInfoLog('onSend_huobi:' + 'ID:' + self.lastOrderID)
+                print (u'huobi order sucess:',self.lastOrderID)
         else:
             print (u'火币下单失败，请查询账户资金额度')
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()
         self.orderCondition.release()
+        #print "huobi onSendOrder end"
 
     # ----------------------------------------------------------------------
     def cancelOrder(self, params):

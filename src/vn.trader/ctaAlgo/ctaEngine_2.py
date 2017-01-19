@@ -105,7 +105,7 @@ class CtaEngine_2(object):
         vtOrderID = self.mainEngine.sendOrder(req, gatewayName)    # 发单
         self.orderStrategyDict[vtOrderID] = strategy        # 保存vtOrderID和策略的映射关系
 
-        print (u'策略%s发送委托，%s，%s，%s@%s,%s' %(strategy.name, vtSymbol, req.direction, volume, price,gatewayName))
+        #print (u'策略%s发送委托，%s，%s，%s@%s,%s' %(strategy.name, vtSymbol, req.direction, volume, price,gatewayName))
         self.writeCtaLog(u'策略%s发送委托，%s，%s，%s@%s'
                          %(strategy.name, vtSymbol, req.direction, volume, price))
         
@@ -226,7 +226,7 @@ class CtaEngine_2(object):
         order = event.dict_['data']
         
         if order.vtOrderID in self.orderStrategyDict:
-            strategy = self.orderStrategyDict[order.vtOrderID]            
+            strategy = self.orderStrategyDict[order.vtOrderID]
             strategy.onOrder_huobi(order)
 
     # ----------------------------------------------------------------------
@@ -267,6 +267,7 @@ class CtaEngine_2(object):
     def processTradeEvent_okcoin(self, event):
         """处理成交推送"""
         trade = event.dict_['data']
+
 
         if trade.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[trade.vtOrderID]

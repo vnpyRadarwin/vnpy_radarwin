@@ -21,6 +21,7 @@ from vtGateway import *
 from rwConstant import *
 from rwDbConnection import *
 from time import localtime
+from radarwinFunction.rwLoggerFunction import *
 
 #priceTypeMapReverse = {v: k for k, v in priceTypeMap.items()}
 
@@ -286,7 +287,7 @@ class Api(vnokcoin_rest.OkcoinApi):
 
         #self.initCallback()
         self.tradeFlag=False
-
+        self.logger = rwLoggerFunction()
         #self.strategyName=''
 
 
@@ -483,6 +484,7 @@ class Api(vnokcoin_rest.OkcoinApi):
         #self.writeLog(u'委托信息查询完成')
     # ----------------------------------------------------------------------
     def getTrades(self):
+        #print "okcoin getTrades start"
         self.tradeFlag = False
 
         ORDER_INFO_RESOURCE = "/api/v1/order_info.do"
@@ -493,9 +495,11 @@ class Api(vnokcoin_rest.OkcoinApi):
         }
         params['sign'] = buildMySign(params, self.secretKey)
         self.sendRequest(params, self.onGetTrade, ORDER_INFO_RESOURCE)
+        #print "okcoin getTrades end"
 
     #----------------------------------------------------------------------
     def onGetTrade(self, result):
+        #print "okcoin onGetTrade start"
         """回调函数"""
         if 'orders' not in result:
             print 'Trade Data Error'
@@ -554,7 +558,7 @@ class Api(vnokcoin_rest.OkcoinApi):
                 self.gateway.onTrade(trade)
 
                 #self.orderDict[trade.orderID] = trade
-
+        #print "okcoin onGetTrade end"
         self.writeLog(u'成交信息查询完成')
 
     # ----------------------------------------------------------------------
@@ -596,6 +600,7 @@ class Api(vnokcoin_rest.OkcoinApi):
     # ----------------------------------------------------------------------
 
     def sendOrder(self, params):
+        #print "okcoin sendOrder start"
         self.lastOrderID = ''
         """发送委托"""
 
@@ -615,27 +620,34 @@ class Api(vnokcoin_rest.OkcoinApi):
         if params.volume:
             paramsDict['amount'] = params.volume
         paramsDict['sign'] = buildMySign(paramsDict, self.secretKey)
+        #print "okcoin sendOrder start_2"
         self.sendRequest(paramsDict, self.onSendOrder, TRADE_RESOURCE)
-
+        #print "okcoin sendOrder start_3"
         # 等待发单回调推送委托号信息
         self.orderCondition.acquire()
         self.orderCondition.wait()
         self.orderCondition.release()
         vtOrderID = '.'.join([self.gatewayName, self.lastOrderID])
+        #print "okcoin sendOrder end"
         return vtOrderID
 
     # ----------------------------------------------------------------------
     def onSendOrder(self,data):
-        test=data['result']
+        #print "okcoin onSendOrder start"
         if 'result' in data and data['result']:
                 self.lastOrderID= str(data['order_id'])
                 self.tradeFlag = True
+                #self.logger.setInfoLog('onSend_okcoin:' + 'ID:' + self.lastOrderID)
+                print (u'okcoin  onSendOrder Sucess:', self.lastOrderID)
         else:
-            print (u'火币下单失败，请查询账户资金额度')
+            print (u'OKCOIN下单失败，请查询账户资金额度')
+
+        print "okcoin onSendOrder start_2"
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()
         self.orderCondition.release()
+        #print "okcoin onSendOrder end"
 
     # ----------------------------------------------------------------------
     def cancelOrder(self, params):

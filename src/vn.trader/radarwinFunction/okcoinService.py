@@ -10,8 +10,6 @@ from rwDbConnection import *
 
 
 #初始化apikey，secretkey,url
-apikey = '933a76b1-a15e-4bc8-97c4-247b4ee123fe'
-secretkey = 'F1DE03EC7723C6748E23FD3C2DFF5CA7'
 #okcoinRESTURL = 'www.okcoin.com'   #请求注意：国内账号需要 修改为 www.okcoin.cn
 okcoinRESTURL = 'www.okcoin.cn'
 

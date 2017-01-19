@@ -178,7 +178,7 @@ class OkcoinGateway(VtGateway):
     def qryAccount(self):
         """查询账户资金"""
         self.api.spotUserInfo()
-        
+
     #----------------------------------------------------------------------
     def qryPosition(self):
         """查询持仓"""
@@ -294,7 +294,7 @@ class Api(vnokcoin.OkCoinApi):
         
         # 连接后订阅现货的成交和账户数据
         self.subscribeSpotTrades()
-        self.subscribeSpotUserInfo()   
+        self.subscribeSpotUserInfo()
         
         self.subscribeSpotTicker(vnokcoin.SYMBOL_BTC)
         #self.subscribeSpotTicker(vnokcoin.SYMBOL_LTC)
@@ -637,6 +637,7 @@ class Api(vnokcoin.OkCoinApi):
         if 'data' in data:
             rawData = data['data']
             self.lastOrderID = rawData['order_id']
+            print ('okcoin order sucess:',self.lastOrderID)
         else:
             print (u'OKCOIN下单失败，请查询账户资金额度')
 

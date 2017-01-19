@@ -14,22 +14,22 @@ def get_token():
     return data["access_token"]
 
 
-def send_msg(message):
+def send_msg(agentid,message):
     print "send_msg"
     url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=" + get_token()
     values = """{"touser" : "1" ,
       "toparty":"1",
       "msgtype":"text",
-      "agentid":"4",
+      "agentid":"%s",
       "text":{
         "content": "%s"
       },
       "safe":"0"
-      }""" % (str(message))
+      }""" % (str(agentid),str(message))
 
-    data = json.loads(values)
-    req = requests.post(url, values)
+    #data = json.loads(values)
+    requests.post(url, values)
 
 
 if __name__ == '__main__':
-    send_msg('message')
+    send_msg('5','message')

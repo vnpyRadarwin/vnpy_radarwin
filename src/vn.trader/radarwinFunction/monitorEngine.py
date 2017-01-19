@@ -117,7 +117,7 @@ class MonitorEngine(object):
                     self.orderCondition.release()
                     if self.gatewayName_1 in self.orderDict:
                         orderData = self.orderDict[self.gatewayName_1]
-                        if orderData.status == TRADER_STATUS_TWO:
+                        if orderData.status == TRADER_STATUS_DEAL:
                             self.writeLog(u'火币卖单成交，%s@%s' % (req.volume, req.price))
                             req.symbol="BTC_CNY_SPOT"
                             req.direction=DIRECTION_LONG
@@ -152,7 +152,7 @@ class MonitorEngine(object):
                     self.orderCondition.release()
                     if self.gatewayName_1 in self.orderDict:
                         orderData=self.orderDict[self.gatewayName_1]
-                        if orderData.status==TRADER_STATUS_TWO:
+                        if orderData.status==TRADER_STATUS_DEAL:
                             self.writeLog(u'火币买单成交，%s@%s' % (req.volume, req.price))
                             req.symbol = "BTC_CNY_SPOT"
                             req.direction = DIRECTION_SHORT
