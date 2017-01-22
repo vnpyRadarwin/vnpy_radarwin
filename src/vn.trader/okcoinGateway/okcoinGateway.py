@@ -156,8 +156,8 @@ class OkcoinGateway(VtGateway):
         self.onLog(log)
         
         # 启动查询
-        self.initQuery()
-        self.startQuery()
+        #self.initQuery()
+        #self.startQuery()
     
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq):
@@ -276,10 +276,10 @@ class Api(vnokcoin.OkCoinApi):
         self.writeLog(u'服务器连接断开')
 
         # 重新连接
-        if self.active:
-            print 'start reconnect'
-            self.reconnect()
-            print 'reconnected'
+        # if self.active:
+        #     print 'start reconnect'
+        #     self.reconnect()
+        #     print 'reconnected'
         
     #----------------------------------------------------------------------
     def onOpen(self, ws):        

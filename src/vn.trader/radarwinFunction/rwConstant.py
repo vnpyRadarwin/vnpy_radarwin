@@ -41,6 +41,9 @@ K_LINE_STYLE_HOUR='hour'
 K_LINE_STYLE_MINUTE='min'
 K_LINE_STYLE_WEEK='week'
 
+WEIXIN_MESSAGE_ERROR='5'
+WEIXIN_MESSAGE_TRADE='4'
+
 
 #SQL
 #---------------------------------------------------------------------------

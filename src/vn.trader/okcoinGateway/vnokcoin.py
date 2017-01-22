@@ -160,9 +160,9 @@ class OkCoinApi(object):
         self.ws = websocket.WebSocketApp(self.host,
                                          on_message=self.onMessage,
                                          on_error=self.onError,
-                                         on_close=self.onClose)
-                                         #on_open=self.onOpen)
-        self.ws.on_open=self.onOpen
+                                         on_close=self.onClose,
+                                         on_open=self.onOpen)
+
         
         self.thread = Thread(target=self.ws.run_forever)
         self.thread.start()
@@ -177,9 +177,9 @@ class OkCoinApi(object):
         self.ws = websocket.WebSocketApp(self.host,
                                          on_message=self.onMessage,
                                          on_error=self.onError,
-                                         on_close=self.onClose)
-                                         #on_open=self.onOpen)
-        self.ws.on_open=self.onOpen
+                                         on_close=self.onClose,
+                                         on_open=self.onOpen)
+
 
         self.thread = Thread(target=self.ws.run_forever)
         self.thread.start()

@@ -554,7 +554,7 @@ class Api(vnhuobi.HuobiApi):
             trade.offset = tradeTypeMap[str(data['type'])]
 
 
-            trade.price=data['processed_price']
+            trade.price=float(data['processed_price'])
             trade.volume=float(data['processed_amount'])
             trade.status=tradeStatusMap[str(data['status'])]
 

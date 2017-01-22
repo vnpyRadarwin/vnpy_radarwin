@@ -10,6 +10,7 @@ import urllib
 import requests
 from threading import Thread
 from rwFunction import *
+from rwConstant import *
 from weixinWarning import *
 
 
@@ -20,7 +21,7 @@ RECONNECTION_TIMES=3
 RECONNECTION_SLEEPTIMES=0.5
 
 #断线后重连间隔时间
-RECONNECTION_INTERVAL=3600
+RECONNECTION_INTERVAL=600
 
 #进程间间隔
 THREAD_INTERVAL=0.5
@@ -69,7 +70,7 @@ class OkcoinApi(object):
                 callback = req['callback']
                 data, error = self.processRequest(req)
                 if error:
-                    #1小时后在连接
+                    #1分钟后在连接
                     sleep(RECONNECTION_INTERVAL)
                     continue
 
@@ -151,8 +152,8 @@ class OkcoinApi(object):
                  result = self.httpGet(HOST_URL,TICKER_RESOURCE,params)
              except Exception, e:
                  print "Tick Data Connect Fail"
-                 sendMessage=u'OKCOIN的tick数据连接中断,1小时后重新连接'
-                 #send_msg('5',sendMessage)
+                 sendMessage=u'OKCOIN的行情数据连接中断,10分钟后重新连接'
+                 send_msg(WEIXIN_MESSAGE_ERROR,sendMessage)
                  tickError = True
 
         return result, tickError
@@ -230,7 +231,7 @@ class OkcoinApi(object):
                 sleep(THREAD_INTERVAL)
                 data, error = self.processRequestTicker(symbol)
                 if error:
-                    # 1小时后在连接
+                    # 1分钟后在连接
                     sleep(RECONNECTION_INTERVAL)
                     print "tick data reconnection"
                     break

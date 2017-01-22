@@ -9,6 +9,7 @@ import requests
 from threading import Thread
 from rwFunction import *
 from weixinWarning import *
+from rwConstant import *
 
 
 HOST_URL='http://api.huobi.com'
@@ -20,7 +21,7 @@ RECONNECTION_TIMES=3
 RECONNECTION_SLEEPTIMES=0.5
 
 #断线后重连间隔时间
-RECONNECTION_INTERVAL=3600
+RECONNECTION_INTERVAL=600
 
 #进程间间隔
 THREAD_INTERVAL=0.5
@@ -69,7 +70,7 @@ class HuobiApi(object):
                 callback = req['callback']
                 r, error = self.processRequest(req)
                 if error:
-                    #1小时后在连接
+                    #1分钟后在连接
                     sleep(RECONNECTION_INTERVAL)
                     continue
 
@@ -153,8 +154,8 @@ class HuobiApi(object):
                  result = requests.post(tickerURL)
              except Exception, e:
                  print "Tick Data Connect Fail"
-                 sendMessage=u'火币tick数据连接中断,1小时后重新连接'
-                 send_msg('5',sendMessage)
+                 sendMessage=u'火币行情数据连接中断,10分钟后重新连接'
+                 send_msg(WEIXIN_MESSAGE_ERROR,sendMessage)
                  tickError = True
 
         return result, tickError
@@ -232,7 +233,7 @@ class HuobiApi(object):
                 sleep(THREAD_INTERVAL)
                 r, error = self.processRequestTicker(symbol,'ticker')
                 if error:
-                    # 1小时后在连接
+                    # 1分钟后在连接
                     sleep(RECONNECTION_INTERVAL)
                     print "tick data reconnection"
                     break
