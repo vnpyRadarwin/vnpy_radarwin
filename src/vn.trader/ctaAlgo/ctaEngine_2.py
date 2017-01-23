@@ -102,6 +102,7 @@ class CtaEngine_2(object):
         req.price = price
         req.volume = volume
         req.priceType=PRICETYPE_LIMITPRICE
+        req.orderStyle=1
         vtOrderID = self.mainEngine.sendOrder(req, gatewayName)    # 发单
         self.orderStrategyDict[vtOrderID] = strategy        # 保存vtOrderID和策略的映射关系
 
@@ -110,7 +111,10 @@ class CtaEngine_2(object):
                          %(strategy.name, vtSymbol, req.direction, volume, price))
         
         return vtOrderID
-    
+    #----------------------------------------------------------------------
+    def getTrades(self, orderID,gatewayName):
+        orderStatus = self.mainEngine.getTrades(orderID, gatewayName)  # 发单
+        return orderStatus
     #----------------------------------------------------------------------
     def cancelOrder(self, vtOrderID):
         """撤单"""

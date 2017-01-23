@@ -139,17 +139,26 @@ class MainEngine(object):
         
         # try:
         #     from okcoinGateway.okcoinGateway import OkcoinGateway
-        #     self.addGateway(OkcoinGateway, 'OKCOIN')
-        #     self.gatewayDict['OKCOIN'].setQryEnabled(True)
+        #     self.addGateway(OkcoinGateway, 'OKCOIN_CNY')
+        #     self.gatewayDict['OKCOIN_CNY'].setQryEnabled(True)
         # except Exception, e:
         #     print e
 
         try:
-            from okcoinGateway_rest.okcoinGateway_rest import OkcoinGateway
+            from okcoinGateway_cny.okcoinGateway_cny import OkcoinGateway
             self.addGateway(OkcoinGateway, 'OKCOIN')
             self.gatewayDict['OKCOIN'].setQryEnabled(True)
         except Exception, e:
             print e
+
+        try:
+            from okcoinGateway_usd.okcoinGateway_usd import OkcoinGateway
+            self.addGateway(OkcoinGateway, 'OKCOIN_USD')
+            self.gatewayDict['OKCOIN_USD'].setQryEnabled(True)
+        except Exception, e:
+            print e
+
+
 
         try:
             from huobiGateway.huobiGateway import HuobiGateway
@@ -198,7 +207,7 @@ class MainEngine(object):
             gateway = self.gatewayDict[gatewayName]
             return gateway.sendOrder(orderReq)
         else:
-            self.writeLog(u'接口不存在：%s' %gatewayName)        
+            self.writeLog(u'接口不存在：%s' %gatewayName)
     
     #----------------------------------------------------------------------
     def cancelOrder(self, cancelOrderReq, gatewayName):
@@ -308,7 +317,16 @@ class MainEngine(object):
     def getAllWorkingOrders(self):
         """查询所有的活跃的委托（返回列表）"""
         return self.dataEngine.getAllWorkingOrders()
-    
+
+
+    #----------------------------------------------------------------------
+    #Radarwin add
+    def getTrades(self, orderID, gatewayName):
+        if gatewayName in self.gatewayDict:
+            gateway = self.gatewayDict[gatewayName]
+            return gateway.getTrades_huotou(orderID)
+        else:
+            self.writeLog(u'接口不存在：%s' %gatewayName)
 
 ########################################################################
 class DataEngine(object):

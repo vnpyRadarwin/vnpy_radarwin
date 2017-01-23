@@ -101,8 +101,11 @@ class MainWindow(QtGui.QMainWindow):
         # connectOkcoinAction = QtGui.QAction(u'连接OKCOIN', self)
         # connectOkcoinAction.triggered.connect(self.connectOkcoin)
 
-        connectOkcoinAction_rest = QtGui.QAction(u'连接OKCOIN', self)
-        connectOkcoinAction_rest.triggered.connect(self.connectOkcoin_rest)
+        connectCNYOkcoinAction_rest = QtGui.QAction(u'连接OKCOIN(CNY)', self)
+        connectCNYOkcoinAction_rest.triggered.connect(self.connectCNYOkcoin_rest)
+
+        # connectUSDOkcoinAction_rest = QtGui.QAction(u'连接OKCOIN(USD)', self)
+        # connectUSDOkcoinAction_rest.triggered.connect(self.connectUSDOkcoin_rest)
 
         connectChBtcAction = QtGui.QAction(u'连接中国比特币', self)
         connectChBtcAction.triggered.connect(self.connectChBtc)
@@ -175,10 +178,12 @@ class MainWindow(QtGui.QMainWindow):
             sysMenu.addAction(connectShzdAction)
         if 'OANDA' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectOandaAction)
-        # if 'OKCOIN' in self.mainEngine.gatewayDict:
+        # if 'OKCOIN_CNY' in self.mainEngine.gatewayDict:
         #     sysMenu.addAction(connectOkcoinAction)
         if 'OKCOIN' in self.mainEngine.gatewayDict:
-            sysMenu.addAction(connectOkcoinAction_rest)
+            sysMenu.addAction(connectCNYOkcoinAction_rest)
+        # if 'OKCOIN_USD' in self.mainEngine.gatewayDict:
+        #      sysMenu.addAction(connectUSDOkcoinAction_rest)
         if 'CHBTC' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectChBtcAction)
         if 'HUOBI' in self.mainEngine.gatewayDict:
@@ -305,15 +310,18 @@ class MainWindow(QtGui.QMainWindow):
     #----------------------------------------------------------------------
     def connectOkcoin(self):
         """连接OKCOIN"""
-        self.mainEngine.connect('OKCOIN')
+        self.mainEngine.connect('OKCOIN_CNY')
 
     # ----------------------------------------------------------------------
-    def connectOkcoin_rest(self):
+    def connectCNYOkcoin_rest(self):
         """连接OKCOIN"""
         self.mainEngine.connect('OKCOIN')
 
     #----------------------------------------------------------------------
-
+    def connectUSDOkcoin_rest(self):
+        """连接OKCOIN_usd"""
+        self.mainEngine.connect('OKCOIN_USD')
+    #----------------------------------------------------------------------
     def connectChBtc(self):
         """连接中国比特币"""
         self.mainEngine.connect('CHBTC')

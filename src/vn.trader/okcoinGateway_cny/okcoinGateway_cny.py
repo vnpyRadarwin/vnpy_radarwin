@@ -16,7 +16,7 @@ from copy import copy
 from datetime import datetime, time
 from threading import Condition
 
-import vnokcoin_rest
+import vnokcoin_cny
 from vtGateway import *
 from rwConstant import *
 from rwDbConnection import *
@@ -113,7 +113,7 @@ traderTypeMap['2'] = ORDER_TYPE_SELL
 traderTypeMap['3'] = ORDER_TYPE_BUY
 traderTypeMap['4'] = ORDER_TYPE_SELL
 
-OKCOIN_HOST="'www.okcoin.cn"
+OKCOIN_HOST="www.okcoin.cn"
 ########################################################################
 class OkcoinGateway(VtGateway):
     """OKCOIN接口"""
@@ -175,7 +175,7 @@ class OkcoinGateway(VtGateway):
 
         # 启动查询
         self.initQuery()
-        #self.startQuery()
+        self.startQuery()
 
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq):
@@ -206,7 +206,7 @@ class OkcoinGateway(VtGateway):
     #----------------------------------------------------------------------
     def qryTrades(self):
         # 下单后调用
-        if self.api.tradeFlag:
+        if self.api.tradeFlag and self.api.tradeFlag_2:
             """查询委托"""
             #self.api.getOrders()
             self.api.getTrades()
@@ -264,9 +264,13 @@ class OkcoinGateway(VtGateway):
         """发单"""
         return self.api.sendOrder(orderReq)
 
+    def getTrades_huotou(self, orderID):
+        """发单"""
+        return self.api.getTrades_huotou(orderID)
+
 
 ########################################################################
-class Api(vnokcoin_rest.OkcoinApi):
+class Api(vnokcoin_cny.OkcoinApi):
     """OKCOIN的API实现"""
 
     #----------------------------------------------------------------------
@@ -287,6 +291,7 @@ class Api(vnokcoin_rest.OkcoinApi):
 
         #self.initCallback()
         self.tradeFlag=False
+        self.tradeFlag_2=True
         self.logger = rwLoggerFunction()
         #self.strategyName=''
 
@@ -503,12 +508,12 @@ class Api(vnokcoin_rest.OkcoinApi):
         """回调函数"""
         if 'orders' not in result:
             print 'Trade Data Error'
-            return
+            return False
 
         ordersData=result['orders']
         if len(ordersData)==0:
             print 'no Trade Data '
-            return
+            return False
         for data in ordersData:
 
             order = VtOrderData()
@@ -557,6 +562,10 @@ class Api(vnokcoin_rest.OkcoinApi):
 
                 self.gateway.onTrade(trade)
 
+                return True
+            else:
+                return False
+
                 #self.orderDict[trade.orderID] = trade
         #print "okcoin onGetTrade end"
         self.writeLog(u'成交信息查询完成')
@@ -580,7 +589,7 @@ class Api(vnokcoin_rest.OkcoinApi):
 
                 pos.symbol = symbol
                 pos.vtSymbol = symbol
-                pos.vtPositionName = symbol
+                pos.vtPositionName = symbol+"_"+self.gatewayName
                 pos.direction = DIRECTION_NET
 
                 funds=data['info']['funds']
@@ -608,7 +617,8 @@ class Api(vnokcoin_rest.OkcoinApi):
             direction='buy'
         else:
             direction = 'sell'
-
+        if params.orderStyle==1:
+            self.tradeFlag_2=False
         TRADE_RESOURCE = "/api/v1/trade.do"
         paramsDict = {
             'api_key': self.apiKey,
@@ -620,6 +630,7 @@ class Api(vnokcoin_rest.OkcoinApi):
         if params.volume:
             paramsDict['amount'] = params.volume
         paramsDict['sign'] = buildMySign(paramsDict, self.secretKey)
+
         #print "okcoin sendOrder start_2"
         self.sendRequest(paramsDict, self.onSendOrder, TRADE_RESOURCE)
         #print "okcoin sendOrder start_3"
@@ -664,6 +675,24 @@ class Api(vnokcoin_rest.OkcoinApi):
 
 
     # ----------------------------------------------------------------------
+    #从策略例调用的接口
+    def getTrades_huotou(self,orderID):
+        """查询最近的成交订单"""
+
+        ORDER_INFO_RESOURCE = "/api/v1/order_info.do"
+        params = {
+            'api_key': self.apiKey,
+            'symbol': 'btc_cny',
+            'order_id': orderID
+        }
+        params['sign'] = buildMySign(params, self.secretKey)
+        result = httpPost(OKCOIN_HOST, ORDER_INFO_RESOURCE, params)
+
+        if result['result'] and len(result['orders'])>0:
+            orderStatus=self.onGetTrade(result)
+            return orderStatus
+        else:
+            return False
 
     def onCancelOrder(self,data):
         # if data['result'] == 'success':
@@ -734,6 +763,7 @@ def buildMySign(params,secretKey):
     data = sign+'secret_key='+secretKey
     return  hashlib.md5(data.encode("utf8")).hexdigest().upper()
 
+
 def httpPost(url, resource, params):
     headers = {
         "Content-type": "application/x-www-form-urlencoded",
@@ -746,7 +776,7 @@ def httpPost(url, resource, params):
 
     response = conn.getresponse()
     data = response.read().decode('utf-8')
-    data=json.loads(data)
+    data = json.loads(data)
     params.clear()
     conn.close()
     return data

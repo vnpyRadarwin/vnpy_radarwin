@@ -121,8 +121,18 @@ class CtaTemplate_2(object):
             return vtOrderID
         else:
             # 交易停止时发单返回空字符串
-            return ''        
-        
+            return ''
+
+    # ----------------------------------------------------------------------
+    def getTrades(self, orderID,gatewayName):
+        """发送委托"""
+        if self.trading:
+            orderStatus = self.ctaEngine.getTrades(orderID,gatewayName)
+            return orderStatus
+        else:
+            # 交易停止时发单返回空字符串
+            return ''
+
     #----------------------------------------------------------------------
     def cancelOrder(self, vtOrderID):
         """撤单"""

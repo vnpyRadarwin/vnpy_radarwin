@@ -8,6 +8,7 @@ vn.huobi的gateway接入
 2. 目前仅支持USD和CNY的现货交易，USD的期货合约交易暂不支持
 '''
 import hashlib
+import httplib
 import json
 import os
 import urllib
@@ -15,21 +16,13 @@ from copy import copy
 from datetime import datetime, time
 from threading import Condition
 
-import requests
-
-import vnhuobi
+import vnokcoin_usd
 from vtGateway import *
 from rwConstant import *
 from rwDbConnection import *
 from time import localtime
 from radarwinFunction.rwLoggerFunction import *
 
-# 价格类型映射
-priceTypeMap = {}
-priceTypeMap['1'] = (DIRECTION_LONG, PRICETYPE_LIMITPRICE)
-priceTypeMap['2'] = (DIRECTION_SHORT, PRICETYPE_LIMITPRICE)
-priceTypeMap['3'] = (DIRECTION_LONG, PRICETYPE_MARKETPRICE)
-priceTypeMap['4'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
 #priceTypeMapReverse = {v: k for k, v in priceTypeMap.items()}
 
 
@@ -39,12 +32,10 @@ priceTypeMap['4'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
 
 
 # CNY
-BTC_CNY_SPOT = 'BTC_CNY_SPOT'
+BTC_USD_SPOT = 'BTC_USD_SPOT'
 #LTC_CNY_SPOT = 'LTC_CNY_SPOT'
 
-EXCHANGE_NAME = 'HUOBI'
-
-HUOBI_SERVICE_API="https://api.huobi.com/apiv3"
+EXCHANGE_NAME = 'OKCOIN'
 
 ############################################
 ## Channel和Symbol的印射
@@ -54,7 +45,7 @@ channelSymbolMap = {}
 
 
 # CNY
-channelSymbolMap['btccny'] = BTC_CNY_SPOT
+channelSymbolMap['btcusd'] = BTC_USD_SPOT
 #channelSymbolMap['ltccny'] = LTC_CNY_SPOT
 
 
@@ -79,16 +70,22 @@ RESPONSE_ASKS='asks'
 SYMBOL_BTC = 'btc'
 #SYMBOL_LTC = 'ltc'
 
+# 价格类型映射
+priceTypeMap = {}
+priceTypeMap['buy'] = (DIRECTION_LONG, PRICETYPE_LIMITPRICE)
+priceTypeMap['sell'] = (DIRECTION_SHORT, PRICETYPE_LIMITPRICE)
+# priceTypeMap['buy_market'] = (DIRECTION_LONG, PRICETYPE_MARKETPRICE)
+# priceTypeMap['sell_market'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
 
 ############################################
 ## 成交单类型
 ############################################
 tradeTypeMap = {}
 
-tradeTypeMap['1'] = TRADE_TYPE_LIMIT_BUY
-tradeTypeMap['2'] = TRADE_TYPE_LIMIT_SELL
-tradeTypeMap['3'] = TRADE_TYPE_MARKET_BUY
-tradeTypeMap['4'] = TRADE_TYPE_MARKET_SELL
+tradeTypeMap['buy'] = TRADE_TYPE_LIMIT_BUY
+tradeTypeMap['sell'] = TRADE_TYPE_LIMIT_SELL
+# tradeTypeMap['buy_market'] = TRADE_TYPE_MARKET_BUY
+# tradeTypeMap['sell_market'] = TRADE_TYPE_MARKET_SELL
 
 ############################################
 ## 成交状态
@@ -98,7 +95,7 @@ tradeStatusMap = {}
 tradeStatusMap['0'] = TRADER_STATUS_NO_DEAL
 tradeStatusMap['1'] = TRADER_STATUS_PART_DEAL
 tradeStatusMap['2'] = TRADER_STATUS_DEAL
-tradeStatusMap['3'] = TRADER_STATUS_CANEL
+tradeStatusMap['4'] = TRADER_STATUS_CANEL
 
 
 ############################################
@@ -116,15 +113,15 @@ traderTypeMap['2'] = ORDER_TYPE_SELL
 traderTypeMap['3'] = ORDER_TYPE_BUY
 traderTypeMap['4'] = ORDER_TYPE_SELL
 
-HUOBI_HOST="https://api.huobi.com/apiv3"
+OKCOIN_HOST="'www.okcoin.com"
 ########################################################################
-class HuobiGateway(VtGateway):
-    """Huobi接口"""
+class OkcoinGateway(VtGateway):
+    """OKCOIN接口"""
 
     #----------------------------------------------------------------------
-    def __init__(self, eventEngine, gatewayName='HUOBI'):
+    def __init__(self, eventEngine, gatewayName='OKCOIN'):
         """Constructor"""
-        super(HuobiGateway, self).__init__(eventEngine, gatewayName)
+        super(OkcoinGateway, self).__init__(eventEngine, gatewayName)
 
         self.api = Api(self)
         self.leverage = 0
@@ -140,26 +137,11 @@ class HuobiGateway(VtGateway):
         # # 画面启动接口
         # else:
         #SQL = 'SELECT ai.api_key as apiKey,ai.secret_key as secretKey,ai.password as password FROM account_info ai,strategy_master sm WHERE ai.account_id = sm.account_id and sm.flag = 1'
-        data = self.dbCon.getMySqlData(GET_ACCOUNT_INFO,params='HUOBI',dbFlag=DATABASE_VNPY)
-        # 载入json文件
-        fileName = self.gatewayName + '_connect.json'
-        path = os.path.abspath(os.path.dirname(__file__))
-        fileName = os.path.join(path, fileName)
+        data = self.dbCon.getMySqlData(GET_ACCOUNT_INFO,params='OKCOIN_USD',dbFlag=DATABASE_VNPY)
 
-        # try:
-        #     f = file(fileName)
-        # except IOError:
-        #     log = VtLogData()
-        #     log.gatewayName = self.gatewayName
-        #     log.logContent = u'读取连接配置出错，请检查'
-        #     self.onLog(log)
-        #     return
-
-        # 解析json文件
-        #setting = json.load(f)
         try:
             data=data[0]
-            host = HUOBI_HOST
+            host = OKCOIN_HOST
             apiKey = str(data['apiKey'])
             secretKey = str(data['secretKey'])
             password=data['password']
@@ -180,7 +162,6 @@ class HuobiGateway(VtGateway):
         log.gatewayName = self.gatewayName
         log.logContent = u'接口初始化成功'
         self.onLog(log)
-        #self.api.strategyName = HUOBI_ACC_STG[strategyNo]
         self.api.qryGenerateCnyContract()
 
         #self.api.getOrders()
@@ -225,7 +206,7 @@ class HuobiGateway(VtGateway):
     #----------------------------------------------------------------------
     def qryTrades(self):
         # 下单后调用
-        if self.api.tradeFlag and self.api.tradeFlag_2:
+        if self.api.tradeFlag:
             """查询委托"""
             #self.api.getOrders()
             self.api.getTrades()
@@ -283,15 +264,10 @@ class HuobiGateway(VtGateway):
         """发单"""
         return self.api.sendOrder(orderReq)
 
-    # ----------------------------------------------------------------------
-    def getTrades_huotou(self, orderID):
-        """发单"""
-        return self.api.getTrades_huotou(orderID)
-
 
 ########################################################################
-class Api(vnhuobi.HuobiApi):
-    """Huobi的API实现"""
+class Api(vnokcoin_usd.OkcoinApi):
+    """OKCOIN的API实现"""
 
     #----------------------------------------------------------------------
     def __init__(self, gateway):
@@ -311,11 +287,9 @@ class Api(vnhuobi.HuobiApi):
 
         #self.initCallback()
         self.tradeFlag=False
-        self.tradeFlag_2 = True
-
+        self.logger = rwLoggerFunction()
         #self.strategyName=''
 
-        self.logger = rwLoggerFunction()
 
     #----------------------------------------------------------------------
     def qryInstruments(self):
@@ -391,7 +365,7 @@ class Api(vnhuobi.HuobiApi):
         contract.size = 1
         contract.priceTick = 0.01
         #contract.strategyName = self.strategyName
-        contractList.append(self.generateSpecificContract(contract, BTC_CNY_SPOT))
+        contractList.append(self.generateSpecificContract(contract, BTC_USD_SPOT))
 
         return contractList
 
@@ -407,7 +381,7 @@ class Api(vnhuobi.HuobiApi):
         if 'ticker' not in data:
             return
         ticker = data['ticker']
-        symbol = channelSymbolMap[ticker['symbol']]
+        symbol = BTC_USD_SPOT
         #vtSymbol= EXCHANGE_NAME+'_'+symbol
         vtSymbol =symbol
         if vtSymbol not in self.tickDict:
@@ -424,7 +398,7 @@ class Api(vnhuobi.HuobiApi):
         tick.lowPrice = float(ticker['low'])
         tick.lastPrice = float(ticker['last'])
         tick.volume = float(ticker['vol'])
-        tick.date, tick.time = generateDateTime(data['time'])
+        tick.date, tick.time = generateDateTime(data['date'])
 
         newtick = copy(tick)
         self.gateway.onTick(newtick)
@@ -438,175 +412,180 @@ class Api(vnhuobi.HuobiApi):
 
     def onDepth(self, data):
         """"""
-        if 'asks' not in data:
-            return
-
-        symbol = channelSymbolMap[data['symbol']]
-
-        if symbol not in self.tickDict:
-            tick = VtTickData()
-            tick.symbol = symbol
-            tick.vtSymbol = symbol
-            tick.gatewayName = self.gatewayName
-            self.tickDict[symbol] = tick
-        else:
-            tick = self.tickDict[symbol]
-
-        tick.bidPrice1, tick.bidVolume1 = data['bids'][0]
-        tick.bidPrice2, tick.bidVolume2 = data['bids'][1]
-        tick.bidPrice3, tick.bidVolume3 = data['bids'][2]
-        tick.bidPrice4, tick.bidVolume4 = data['bids'][3]
-        tick.bidPrice5, tick.bidVolume5 = data['bids'][4]
-
-        tick.askPrice1, tick.askVolume1 = data['asks'][0]
-        tick.askPrice2, tick.askVolume2 = data['asks'][1]
-        tick.askPrice3, tick.askVolume3 = data['asks'][2]
-        tick.askPrice4, tick.askVolume4 = data['asks'][3]
-        tick.askPrice5, tick.askVolume5 = data['asks'][4]
-
+        # if 'asks' not in data:
+        #     return
+        #
+        # symbol = channelSymbolMap[data['symbol']]
+        #
+        # if symbol not in self.tickDict:
+        #     tick = VtTickData()
+        #     tick.symbol = symbol
+        #     tick.vtSymbol = symbol
+        #     tick.gatewayName = self.gatewayName
+        #     self.tickDict[symbol] = tick
+        # else:
+        #     tick = self.tickDict[symbol]
+        #
+        # tick.bidPrice1, tick.bidVolume1 = data['bids'][0]
+        # tick.bidPrice2, tick.bidVolume2 = data['bids'][1]
+        # tick.bidPrice3, tick.bidVolume3 = data['bids'][2]
+        # tick.bidPrice4, tick.bidVolume4 = data['bids'][3]
+        # tick.bidPrice5, tick.bidVolume5 = data['bids'][4]
+        #
+        # tick.askPrice1, tick.askVolume1 = data['asks'][0]
+        # tick.askPrice2, tick.askVolume2 = data['asks'][1]
+        # tick.askPrice3, tick.askVolume3 = data['asks'][2]
+        # tick.askPrice4, tick.askVolume4 = data['asks'][3]
+        # tick.askPrice5, tick.askVolume5 = data['asks'][4]
+        pass
         #newtick = copy(tick)
         #self.gateway.onTick(newtick)
 
     # ----------------------------------------------------------------------
     def getOrders(self):
         """查询正在进行的委托订单"""
-        timestamp = long(time.time())
-        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
-                      "created": timestamp, "coin_type": 1, "method": 'get_orders'}
-        sign = signature(paramsDict)
-        del paramsDict["secret_key"]
-        paramsDict['sign'] = sign
-        self.sendRequest(paramsDict, self.onGetOrders)
+        # timestamp = long(time.time())
+        # paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
+        #               "created": timestamp, "coin_type": 1, "method": 'get_orders'}
+        # sign = signature(paramsDict)
+        # del paramsDict["secret_key"]
+        # paramsDict['sign'] = sign
+        # self.sendRequest(paramsDict, self.onGetOrders)
+        pass
 
     # ----------------------------------------------------------------------
     def onGetOrders(self, data):
         """回调函数"""
-        if len(data) == 0:
+        # if len(data) == 0:
+        #     return
+        # for d in data:
+        #     order = VtOrderData()
+        #     order.gatewayName = self.gatewayName
+        #
+        #     order.symbol = BTC_USD_SPOT
+        #     order.exchange = EXCHANGE_OKCOIN
+        #     order.vtSymbol = '.'.join([order.symbol, order.exchange])
+        #     order.orderID = str(d['id'])
+        #     order.direction, priceType = priceTypeMap[str(d['type'])]
+        #     order.offset = orderTypeMap[str(d['type'])]
+        #     #order.status = orderStatusMap[str(d['status'])]
+        #
+        #     order.price = d['order_price']
+        #     order.totalVolume = d['order_amount']
+        #     order.tradeVolume = d['processed_amount']
+        #     order.orderTime = generateDateTimeStamp(d['order_time'])
+        #
+        #     order.vtOrderID = '.'.join([self.gatewayName, order.orderID])
+        #
+        #     self.gateway.onOrder(order)
+        #
+        #     self.orderDict[order.orderID] = order
+        pass
+        #self.writeLog(u'委托信息查询完成')
+    # ----------------------------------------------------------------------
+    def getTrades(self):
+        #print "okcoin getTrades start"
+        self.tradeFlag = False
+
+        ORDER_INFO_RESOURCE = "/api/v1/order_info.do"
+        params = {
+            'api_key': self.apiKey,
+            'symbol': 'btc_cny',
+            'order_id': self.lastOrderID
+        }
+        params['sign'] = buildMySign(params, self.secretKey)
+        self.sendRequest(params, self.onGetTrade, ORDER_INFO_RESOURCE)
+        #print "okcoin getTrades end"
+
+    #----------------------------------------------------------------------
+    def onGetTrade(self, result):
+        #print "okcoin onGetTrade start"
+        """回调函数"""
+        if 'orders' not in result:
+            print 'Trade Data Error'
             return
-        for d in data:
+
+        ordersData=result['orders']
+        if len(ordersData)==0:
+            print 'no Trade Data '
+            return
+        for data in ordersData:
+
             order = VtOrderData()
             order.gatewayName = self.gatewayName
 
-            order.symbol = BTC_CNY_SPOT
-            order.exchange = EXCHANGE_HUOBI
+            order.symbol = BTC_USD_SPOT
+            order.exchange = EXCHANGE_OKCOIN
             order.vtSymbol = '.'.join([order.symbol, order.exchange])
-            order.orderID = str(d['id'])
-            order.direction, priceType = priceTypeMap[str(d['type'])]
-            order.offset = orderTypeMap[str(d['type'])]
-            #order.status = orderStatusMap[str(d['status'])]
 
-            order.price = d['order_price']
-            order.totalVolume = d['order_amount']
-            order.tradeVolume = d['processed_amount']
-            order.orderTime = generateDateTimeStamp(d['order_time'])
+            order.orderID = str(data['order_id'])
+            order.direction, priceType = priceTypeMap[str(data['type'])]
+            order.offset = tradeTypeMap[str(data['type'])]
+            # order.status = orderStatusMap[str(d['status'])]
+
+            order.price = data['price']
+            order.totalVolume = data['amount']
+            order.tradeVolume = data['deal_amount']
+            order.status=tradeStatusMap[str(data['status'])]
+            #order.orderTime = generateDateTimeStamp(d['order_time'])
 
             order.vtOrderID = '.'.join([self.gatewayName, order.orderID])
 
             self.gateway.onOrder(order)
 
-            self.orderDict[order.orderID] = order
+            #self.orderDict[order.orderID] = order
+            if 'status' in data and tradeStatusMap[str(data['status'])]==TRADER_STATUS_DEAL:
+                trade = VtTradeData()
+                trade.gatewayName = self.gatewayName
 
-        #self.writeLog(u'委托信息查询完成')
-    # ----------------------------------------------------------------------
-    def getTrades(self):
-        #print "huobi getTrades start"
-        self.tradeFlag = False
-        """查询最近的成交订单"""
-        timestamp = long(time.time())
-        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,"created": timestamp, "coin_type": 1, "id":self.lastOrderID,"method": 'order_info'}
-        # paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
-        #               "created": timestamp, "coin_type": 1, "method": 'get_new_deal_orders'}
-        sign = signature(paramsDict)
-        del paramsDict["secret_key"]
-        paramsDict['sign'] = sign
-        self.sendRequest(paramsDict, self.onGetTrade)
-        #print "huobi getTrades end"
-
-    #----------------------------------------------------------------------
-    def onGetTrade(self, data):
-        #print "huobi onGetTrade start"
-        """回调函数"""
-        if len(data)==0:
-            return False
-        order = VtOrderData()
-        order.gatewayName = self.gatewayName
-
-        order.symbol = BTC_CNY_SPOT
-        order.exchange = EXCHANGE_HUOBI
-        order.vtSymbol = '.'.join([order.symbol, order.exchange])
-        order.orderID = str(data['id'])
-        order.direction, priceType = priceTypeMap[str(data['type'])]
-        order.offset = traderTypeMap[str(data['type'])]
-        # order.status = orderStatusMap[str(d['status'])]
-
-        order.price = data['order_price']
-        order.totalVolume = data['order_amount']
-        order.tradeVolume = data['processed_amount']
-        order.status=tradeStatusMap[str(data['status'])]
-        #order.orderTime = generateDateTimeStamp(d['order_time'])
-
-        order.vtOrderID = '.'.join([self.gatewayName, order.orderID])
-
-        self.gateway.onOrder(order)
-
-        #print "huobi onGetTrade gateway.onOrder start"
-        #self.orderDict[order.orderID] = order
-        if 'status' in data and tradeStatusMap[str(data['status'])]==TRADER_STATUS_DEAL:
-            trade = VtTradeData()
-            trade.gatewayName = self.gatewayName
-
-            trade.symbol = BTC_CNY_SPOT
-            trade.exchange = EXCHANGE_HUOBI
-            trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
-            trade.orderID = str(data['id'])
-            trade.tradeID=  str(data['id'])
-            trade.direction, priceType = priceTypeMap[str(data['type'])]
-            trade.offset = tradeTypeMap[str(data['type'])]
+                trade.symbol = BTC_USD_SPOT
+                trade.exchange = EXCHANGE_OKCOIN
+                trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
+                trade.orderID = str(data['order_id'])
+                trade.tradeID=  str(data['order_id'])
+                trade.direction, priceType = priceTypeMap[str(data['type'])]
+                trade.offset = tradeTypeMap[str(data['type'])]
 
 
-            trade.price=float(data['processed_price'])
-            trade.volume=float(data['processed_amount'])
-            trade.status=tradeStatusMap[str(data['status'])]
+                trade.price=data['avg_price']
+                trade.volume=float(data['deal_amount'])
+                trade.status=tradeStatusMap[str(data['status'])]
 
 
-            trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
-            trade.vtTradeID = '.'.join([self.gatewayName, trade.tradeID])
+                trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
+                trade.vtTradeID = '.'.join([self.gatewayName, trade.tradeID])
 
-            self.gateway.onTrade(trade)
-            return True
-        else:
-            return False
+                self.gateway.onTrade(trade)
 
-            #self.orderDict[trade.orderID] = trade
-        #print "huobi onGetTrade end"
+                #self.orderDict[trade.orderID] = trade
+        #print "okcoin onGetTrade end"
         self.writeLog(u'成交信息查询完成')
 
     # ----------------------------------------------------------------------
     def spotUserInfo(self):
         """查询现货账户"""
-        timestamp = long(time.time())
-        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
-                  "created": timestamp, "method": 'get_account_info'}
-        sign = signature(paramsDict)
-        del paramsDict["secret_key"]
-        paramsDict['sign'] = sign
-        self.sendRequest(paramsDict, self.onSpotUserInfo)
+        USERINFO_RESOURCE = "/api/v1/userinfo.do"
+        params ={}
+        params['api_key'] = self.apiKey
+        params['sign'] = buildMySign(params,self.secretKey)
+        self.sendRequest(params, self.onSpotUserInfo,USERINFO_RESOURCE)
 
     # ----------------------------------------------------------------------
     def onSpotUserInfo(self, data):
         """回调函数"""
         # 持仓信息
-        for symbol in ['btc', 'cny']:
+        for symbol in ['btc', 'usd']:
                 pos = VtPositionData()
                 pos.gatewayName = self.gatewayName
 
                 pos.symbol = symbol
                 pos.vtSymbol = symbol
-                pos.vtPositionName = symbol
+                pos.vtPositionName = symbol+"_"+self.gatewayName
                 pos.direction = DIRECTION_NET
 
-                pos.frozen = float(data['frozen_%s_display' %symbol])
-                pos.position = float(data['available_%s_display' %symbol])
+                funds=data['info']['funds']
+                pos.frozen = float(funds['freezed']['%s' %symbol])
+                pos.position = float(funds['free']['%s' %symbol])
 
                 self.gateway.onPosition(pos)
 
@@ -615,97 +594,76 @@ class Api(vnhuobi.HuobiApi):
         account.gatewayName = self.gatewayName
         account.accountID = self.gatewayName
         account.vtAccountID = account.accountID
-        account.balance = float(data['net_asset'])
+        account.balance = float(funds['asset']['total'])
         self.gateway.onAccount(account)
 
     # ----------------------------------------------------------------------
 
     def sendOrder(self, params):
-        #print "huobi sendOrder start"
+        #print "okcoin sendOrder start"
         self.lastOrderID = ''
         """发送委托"""
-        timestamp = long(time.time())
-        if params.symbol == BTC_CNY_SPOT:
-            coin_type=1
-        else:
-            coin_type=2
+
         if params.direction == DIRECTION_LONG:
             direction='buy'
         else:
             direction = 'sell'
-        if params.orderStyle==1:
-            self.tradeFlag_2=False
 
-        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
-                  "coin_type":coin_type,"price":params.price,"amount":params.volume,
-                  "created": timestamp, "method": direction}
-        sign=signature(paramsDict)
-        del paramsDict["secret_key"]
-        paramsDict['sign']=sign
-        if self.trade_password:
-            paramsDict["trade_password"] =self.password
-        #print "huobi sendOrder start_2"
-        self.sendRequest(paramsDict,self.onSendOrder)
-        #print "huobi sendOrder start_3"
+        TRADE_RESOURCE = "/api/v1/trade.do"
+        paramsDict = {
+            'api_key': self.apiKey,
+            'symbol': 'btc_cny',
+            'type': direction
+        }
+        if params.price:
+            paramsDict['price'] = params.price
+        if params.volume:
+            paramsDict['amount'] = params.volume
+        paramsDict['sign'] = buildMySign(paramsDict, self.secretKey)
+        #print "okcoin sendOrder start_2"
+        self.sendRequest(paramsDict, self.onSendOrder, TRADE_RESOURCE)
+        #print "okcoin sendOrder start_3"
         # 等待发单回调推送委托号信息
         self.orderCondition.acquire()
         self.orderCondition.wait()
         self.orderCondition.release()
         vtOrderID = '.'.join([self.gatewayName, self.lastOrderID])
-        #print "huobi sendOrder end"
+        #print "okcoin sendOrder end"
         return vtOrderID
 
     # ----------------------------------------------------------------------
     def onSendOrder(self,data):
-        if 'result' in data and data['result'] == 'success':
-                self.lastOrderID= str(data['id'])
+        #print "okcoin onSendOrder start"
+        if 'result' in data and data['result']:
+                self.lastOrderID= str(data['order_id'])
                 self.tradeFlag = True
-                #self.logger.setInfoLog('onSend_huobi:' + 'ID:' + self.lastOrderID)
-                print (u'huobi order sucess:',self.lastOrderID)
+                #self.logger.setInfoLog('onSend_okcoin:' + 'ID:' + self.lastOrderID)
+                print (u'okcoin  onSendOrder Sucess:', self.lastOrderID)
         else:
-            print (u'火币下单失败，请查询账户资金额度')
+            print (u'OKCOIN下单失败，请查询账户资金额度')
+
+        print "okcoin onSendOrder start_2"
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()
         self.orderCondition.release()
-        #print "huobi onSendOrder end"
+        #print "okcoin onSendOrder end"
 
     # ----------------------------------------------------------------------
     def cancelOrder(self, params):
         """发送撤單"""
-        timestamp = long(time.time())
-        if params.symbol == BTC_CNY_SPOT:
-            coin_type = 1
-        else:
-            coin_type = 2
 
-        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey,
-                      "coin_type": coin_type, "id": params.orderID,"created": timestamp,
-                      "method": 'cancel_order'}
-        sign = signature(paramsDict)
-        del paramsDict["secret_key"]
-        paramsDict['sign'] = sign
-        return self.sendRequest(paramsDict, self.onCancelOrder)
+        CANCEL_ORDER_RESOURCE = "/api/v1/cancel_order.do"
+        params = {
+             'api_key':self.apiKey,
+             'symbol':'btc_cny',
+             'order_id':params.orderID
+        }
+        params['sign'] = buildMySign(params,self.__secretkey)
+        return self.sendRequest(params, self.onCancelOrder, CANCEL_ORDER_RESOURCE)
+
 
     # ----------------------------------------------------------------------
-    #从策略例调用的接口
-    def getTrades_huotou(self,orderID):
-        """查询最近的成交订单"""
-        timestamp = long(time.time())
-        paramsDict = {"access_key": self.apiKey, "secret_key": self.secretKey, "created": timestamp, "coin_type": 1,
-                      "id": orderID, "method": 'order_info'}
-
-        sign = signature(paramsDict)
-        del paramsDict["secret_key"]
-        paramsDict['sign'] = sign
-        payload = urllib.urlencode(paramsDict)
-        result = requests.post(HUOBI_SERVICE_API, params=payload)
-        if result.status_code == 200:
-            data = result.json()
-            orderStatus=self.onGetTrade(data)
-            return orderStatus
-        else:
-            return False
 
     def onCancelOrder(self,data):
         # if data['result'] == 'success':
@@ -767,14 +725,31 @@ def generateDateTimeStamp(s):
     orderTime = time.strftime("%Y-%m-%d %H:%M:%S",dt)
     return orderTime
 
-def signature(params):
-    params = sorted(params.iteritems(), key=lambda d: d[0], reverse=False)
-    message = urllib.urlencode(params)
-    m = hashlib.md5()
-    m.update(message)
-    m.digest()
-    sig = m.hexdigest()
-    return sig
+
+
+def buildMySign(params,secretKey):
+    sign = ''
+    for key in sorted(params.keys()):
+        sign += key + '=' + str(params[key]) +'&'
+    data = sign+'secret_key='+secretKey
+    return  hashlib.md5(data.encode("utf8")).hexdigest().upper()
+
+def httpPost(url, resource, params):
+    headers = {
+        "Content-type": "application/x-www-form-urlencoded",
+    }
+
+    conn = httplib.HTTPSConnection(url, timeout=10)
+    temp_params = urllib.urlencode(params)
+
+    conn.request("POST", resource, temp_params, headers)
+
+    response = conn.getresponse()
+    data = response.read().decode('utf-8')
+    data=json.loads(data)
+    params.clear()
+    conn.close()
+    return data
 
 
 
