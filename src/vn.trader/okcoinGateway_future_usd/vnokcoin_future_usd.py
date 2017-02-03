@@ -26,6 +26,8 @@ RECONNECTION_INTERVAL=600
 #进程间间隔
 THREAD_INTERVAL=0.5
 
+CONTRACT_TYPE='this_week'
+
 ########################################################################
 class OkcoinApi(object):
     """基于Websocket的API对象"""
@@ -44,7 +46,7 @@ class OkcoinApi(object):
         self.reqThread = Thread(target=self.processQueue)  # 请求处理线程
         self.streamPricesThread = Thread(target=self.processStreamPrices)  # 实时行情线程
         self.DEBUG = False
-        self.spotTicker=['btc_cny']
+        self.spotTicker=['btc_usd']
         #######################
         ## 通用函数
         #######################
@@ -140,11 +142,11 @@ class OkcoinApi(object):
         # result,tickError = reConnection_tick(times=RECONNECTION_TIMES,host=tickerURL,sleepTime=RECONNECTION_SLEEPTIMES)
         tickError=False
         result=None
-        TICKER_RESOURCE = "/api/v1/ticker.do"
+        TICKER_RESOURCE = "/api/v1/future_ticker.do"
         try:
             params = ''
             if symbol:
-                params = 'symbol=%(symbol)s' % {'symbol': symbol}
+                params = 'symbol=%(symbol)s&contract_type=%(contract_type)s' % {'symbol': symbol,'contract_type':CONTRACT_TYPE}
             result = self.httpGet(HOST_URL,TICKER_RESOURCE,params)
         except Exception, e:
              sleep(THREAD_INTERVAL)
@@ -153,7 +155,7 @@ class OkcoinApi(object):
              except Exception, e:
                  print "Tick Data Connect Fail"
                  sendMessage=u'OKCOIN的行情数据连接中断,10分钟后重新连接'
-                 send_msg(WEIXIN_MESSAGE_ERROR,sendMessage)
+                 #send_msg(WEIXIN_MESSAGE_ERROR,sendMessage)
                  tickError = True
 
         return result, tickError

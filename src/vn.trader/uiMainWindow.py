@@ -101,11 +101,14 @@ class MainWindow(QtGui.QMainWindow):
         # connectOkcoinAction = QtGui.QAction(u'连接OKCOIN', self)
         # connectOkcoinAction.triggered.connect(self.connectOkcoin)
 
-        connectCNYOkcoinAction_rest = QtGui.QAction(u'连接OKCOIN(CNY)', self)
-        connectCNYOkcoinAction_rest.triggered.connect(self.connectCNYOkcoin_rest)
+        connectCnyOkcoinAction = QtGui.QAction(u'连接OKCOIN中国站', self)
+        connectCnyOkcoinAction.triggered.connect(self.connectCnyOkcoin)
 
-        # connectUSDOkcoinAction_rest = QtGui.QAction(u'连接OKCOIN(USD)', self)
-        # connectUSDOkcoinAction_rest.triggered.connect(self.connectUSDOkcoin_rest)
+        connectUsdSpotOkcoinAction = QtGui.QAction(u'连接OKCOIN美国站(现货)', self)
+        connectUsdSpotOkcoinAction.triggered.connect(self.connectUsdSpotOkcoin)
+
+        connectUsdFutureOkcoinAction = QtGui.QAction(u'连接OKCOIN美国站(期货)', self)
+        connectUsdFutureOkcoinAction.triggered.connect(self.connectUsdFutureOkcoin)
 
         connectChBtcAction = QtGui.QAction(u'连接中国比特币', self)
         connectChBtcAction.triggered.connect(self.connectChBtc)
@@ -180,10 +183,12 @@ class MainWindow(QtGui.QMainWindow):
             sysMenu.addAction(connectOandaAction)
         # if 'OKCOIN_CNY' in self.mainEngine.gatewayDict:
         #     sysMenu.addAction(connectOkcoinAction)
-        if 'OKCOIN' in self.mainEngine.gatewayDict:
-            sysMenu.addAction(connectCNYOkcoinAction_rest)
-        # if 'OKCOIN_USD' in self.mainEngine.gatewayDict:
-        #      sysMenu.addAction(connectUSDOkcoinAction_rest)
+        if 'OKCOIN_CNY' in self.mainEngine.gatewayDict:
+            sysMenu.addAction(connectCnyOkcoinAction)
+        if 'OKCOIN_USD_SPOT' in self.mainEngine.gatewayDict:
+             sysMenu.addAction(connectUsdSpotOkcoinAction)
+        if 'OKCOIN_USD_FUTURE' in self.mainEngine.gatewayDict:
+             sysMenu.addAction(connectUsdFutureOkcoinAction)
         if 'CHBTC' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectChBtcAction)
         if 'HUOBI' in self.mainEngine.gatewayDict:
@@ -313,14 +318,19 @@ class MainWindow(QtGui.QMainWindow):
         self.mainEngine.connect('OKCOIN_CNY')
 
     # ----------------------------------------------------------------------
-    def connectCNYOkcoin_rest(self):
+    def connectCnyOkcoin(self):
         """连接OKCOIN"""
-        self.mainEngine.connect('OKCOIN')
+        self.mainEngine.connect('OKCOIN_CNY')
 
     #----------------------------------------------------------------------
-    def connectUSDOkcoin_rest(self):
-        """连接OKCOIN_usd"""
-        self.mainEngine.connect('OKCOIN_USD')
+    def connectUsdSpotOkcoin(self):
+        """连接OKCOIN_usd 现货"""
+        self.mainEngine.connect('OKCOIN_USD_SPOT')
+
+    #----------------------------------------------------------------------
+    def connectUsdFutureOkcoin(self):
+        """连接OKCOIN_usd 期货"""
+        self.mainEngine.connect('OKCOIN_USD_FUTURE')
     #----------------------------------------------------------------------
     def connectChBtc(self):
         """连接中国比特币"""

@@ -146,15 +146,22 @@ class MainEngine(object):
 
         try:
             from okcoinGateway_cny.okcoinGateway_cny import OkcoinGateway
-            self.addGateway(OkcoinGateway, 'OKCOIN')
-            self.gatewayDict['OKCOIN'].setQryEnabled(True)
+            self.addGateway(OkcoinGateway, 'OKCOIN_CNY')
+            self.gatewayDict['OKCOIN_CNY'].setQryEnabled(True)
         except Exception, e:
             print e
 
         try:
-            from okcoinGateway_usd.okcoinGateway_usd import OkcoinGateway
-            self.addGateway(OkcoinGateway, 'OKCOIN_USD')
-            self.gatewayDict['OKCOIN_USD'].setQryEnabled(True)
+            from okcoinGateway_spot_usd.okcoinGateway_spot_usd import OkcoinGateway
+            self.addGateway(OkcoinGateway, 'OKCOIN_USD_SPOT')
+            self.gatewayDict['OKCOIN_USD_SPOT'].setQryEnabled(True)
+        except Exception, e:
+            print e
+
+        try:
+            from okcoinGateway_future_usd.okcoinGateway_future_usd import OkcoinGateway
+            self.addGateway(OkcoinGateway, 'OKCOIN_USD_FUTURE')
+            self.gatewayDict['OKCOIN_USD_FUTURE'].setQryEnabled(True)
         except Exception, e:
             print e
 

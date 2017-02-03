@@ -16,7 +16,7 @@ from copy import copy
 from datetime import datetime, time
 from threading import Condition
 
-import vnokcoin_usd
+import vnokcoin_future_usd
 from vtGateway import *
 from rwConstant import *
 from rwDbConnection import *
@@ -32,7 +32,7 @@ from radarwinFunction.rwLoggerFunction import *
 
 
 # CNY
-BTC_USD_SPOT = 'BTC_USD_SPOT'
+BTC_USD_FUTURE = 'BTC_USD_FUTURE'
 #LTC_CNY_SPOT = 'LTC_CNY_SPOT'
 
 EXCHANGE_NAME = 'OKCOIN'
@@ -45,7 +45,7 @@ channelSymbolMap = {}
 
 
 # CNY
-channelSymbolMap['btcusd'] = BTC_USD_SPOT
+channelSymbolMap['btcusd'] = BTC_USD_FUTURE
 #channelSymbolMap['ltccny'] = LTC_CNY_SPOT
 
 
@@ -61,6 +61,7 @@ RESPONSE_ASKS='asks'
 #持仓信息
 
 
+CONTRACT_TYPE='this_week'
 ############################################
 ## 持仓类型（BTC,LTC,CNY）
 ############################################
@@ -72,8 +73,10 @@ SYMBOL_BTC = 'btc'
 
 # 价格类型映射
 priceTypeMap = {}
-priceTypeMap['buy'] = (DIRECTION_LONG, PRICETYPE_LIMITPRICE)
-priceTypeMap['sell'] = (DIRECTION_SHORT, PRICETYPE_LIMITPRICE)
+priceTypeMap['1'] = (DIRECTION_LONG, OFFSET_OPEN)
+priceTypeMap['2'] = (DIRECTION_SHORT, OFFSET_OPEN)
+priceTypeMap['3'] = (DIRECTION_LONG, OFFSET_CLOSE)
+priceTypeMap['3'] = (DIRECTION_SHORT, OFFSET_CLOSE)
 # priceTypeMap['buy_market'] = (DIRECTION_LONG, PRICETYPE_MARKETPRICE)
 # priceTypeMap['sell_market'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
 
@@ -92,10 +95,10 @@ tradeTypeMap['sell'] = TRADE_TYPE_LIMIT_SELL
 ############################################
 tradeStatusMap = {}
 
-tradeStatusMap['0'] = TRADER_STATUS_NO_DEAL
-tradeStatusMap['1'] = TRADER_STATUS_PART_DEAL
-tradeStatusMap['2'] = TRADER_STATUS_DEAL
-tradeStatusMap['4'] = TRADER_STATUS_CANEL
+tradeStatusMap['0'] = STATUS_WAITTING
+tradeStatusMap['1'] = STATUS_PARTTRADED
+tradeStatusMap['2'] = STATUS_ALLTRADED
+tradeStatusMap['4'] = STATUS_PROCESSING
 
 
 ############################################
@@ -114,6 +117,10 @@ traderTypeMap['3'] = ORDER_TYPE_BUY
 traderTypeMap['4'] = ORDER_TYPE_SELL
 
 OKCOIN_HOST="'www.okcoin.com"
+
+USERINFO_MODE_FULL='FULL'
+USERINFO_MODE_FIX='FIX'
+
 ########################################################################
 class OkcoinGateway(VtGateway):
     """OKCOIN接口"""
@@ -127,7 +134,8 @@ class OkcoinGateway(VtGateway):
         self.leverage = 0
         self.connected = False
         self.dbCon = rwDbConnection()
-
+        self.userInfo_Mod=USERINFO_MODE_FULL
+        self.userInfo_Method=''
     #----------------------------------------------------------------------
     def connect(self):
         """连接"""
@@ -163,7 +171,10 @@ class OkcoinGateway(VtGateway):
         log.logContent = u'接口初始化成功'
         self.onLog(log)
         self.api.qryGenerateCnyContract()
-
+        if self.userInfo_Mod==USERINFO_MODE_FULL:
+            self.userInfo_Method=self.api.spotUserInfo
+        else:
+            self.userInfo_Method = self.api.spotUserInfo_4fix
         #self.api.getOrders()
 
         # self.api.getTickerInfo(SYMBOL_BTC)
@@ -190,7 +201,7 @@ class OkcoinGateway(VtGateway):
     #----------------------------------------------------------------------
     def qryAccount(self):
         """查询账户资金"""
-        self.api.spotUserInfo()
+        self.userInfo_Method()
 
     #----------------------------------------------------------------------
     def qryPosition(self):
@@ -206,7 +217,7 @@ class OkcoinGateway(VtGateway):
     #----------------------------------------------------------------------
     def qryTrades(self):
         # 下单后调用
-        if self.api.tradeFlag:
+        if self.api.tradeFlag and self.api.tradeFlag_2:
             """查询委托"""
             #self.api.getOrders()
             self.api.getTrades()
@@ -266,7 +277,7 @@ class OkcoinGateway(VtGateway):
 
 
 ########################################################################
-class Api(vnokcoin_usd.OkcoinApi):
+class Api(vnokcoin_future_usd.OkcoinApi):
     """OKCOIN的API实现"""
 
     #----------------------------------------------------------------------
@@ -287,6 +298,7 @@ class Api(vnokcoin_usd.OkcoinApi):
 
         #self.initCallback()
         self.tradeFlag=False
+        self.tradeFlag_2=True
         self.logger = rwLoggerFunction()
         #self.strategyName=''
 
@@ -365,7 +377,7 @@ class Api(vnokcoin_usd.OkcoinApi):
         contract.size = 1
         contract.priceTick = 0.01
         #contract.strategyName = self.strategyName
-        contractList.append(self.generateSpecificContract(contract, BTC_USD_SPOT))
+        contractList.append(self.generateSpecificContract(contract, BTC_USD_FUTURE))
 
         return contractList
 
@@ -381,7 +393,7 @@ class Api(vnokcoin_usd.OkcoinApi):
         if 'ticker' not in data:
             return
         ticker = data['ticker']
-        symbol = BTC_USD_SPOT
+        symbol = BTC_USD_FUTURE
         #vtSymbol= EXCHANGE_NAME+'_'+symbol
         vtSymbol =symbol
         if vtSymbol not in self.tickDict:
@@ -462,7 +474,7 @@ class Api(vnokcoin_usd.OkcoinApi):
         #     order = VtOrderData()
         #     order.gatewayName = self.gatewayName
         #
-        #     order.symbol = BTC_USD_SPOT
+        #     order.symbol = BTC_USD_FUTURE
         #     order.exchange = EXCHANGE_OKCOIN
         #     order.vtSymbol = '.'.join([order.symbol, order.exchange])
         #     order.orderID = str(d['id'])
@@ -487,10 +499,11 @@ class Api(vnokcoin_usd.OkcoinApi):
         #print "okcoin getTrades start"
         self.tradeFlag = False
 
-        ORDER_INFO_RESOURCE = "/api/v1/order_info.do"
+        ORDER_INFO_RESOURCE = "/api/v1/future_order_info.do"
         params = {
             'api_key': self.apiKey,
-            'symbol': 'btc_cny',
+            'symbol': 'btc_usd',
+            'contract_type':CONTRACT_TYPE,
             'order_id': self.lastOrderID
         }
         params['sign'] = buildMySign(params, self.secretKey)
@@ -501,31 +514,28 @@ class Api(vnokcoin_usd.OkcoinApi):
     def onGetTrade(self, result):
         #print "okcoin onGetTrade start"
         """回调函数"""
-        if 'orders' not in result:
+        if not result['result']:
             print 'Trade Data Error'
             return
 
         ordersData=result['orders']
-        if len(ordersData)==0:
-            print 'no Trade Data '
-            return
+
         for data in ordersData:
 
             order = VtOrderData()
             order.gatewayName = self.gatewayName
 
-            order.symbol = BTC_USD_SPOT
+            order.symbol = BTC_USD_FUTURE
             order.exchange = EXCHANGE_OKCOIN
             order.vtSymbol = '.'.join([order.symbol, order.exchange])
 
             order.orderID = str(data['order_id'])
-            order.direction, priceType = priceTypeMap[str(data['type'])]
-            order.offset = tradeTypeMap[str(data['type'])]
+            order.direction, offset = priceTypeMap[str(data['type'])]
             # order.status = orderStatusMap[str(d['status'])]
 
             order.price = data['price']
             order.totalVolume = data['amount']
-            order.tradeVolume = data['deal_amount']
+            #order.tradeVolume = data['deal_amount']
             order.status=tradeStatusMap[str(data['status'])]
             #order.orderTime = generateDateTimeStamp(d['order_time'])
 
@@ -534,21 +544,21 @@ class Api(vnokcoin_usd.OkcoinApi):
             self.gateway.onOrder(order)
 
             #self.orderDict[order.orderID] = order
-            if 'status' in data and tradeStatusMap[str(data['status'])]==TRADER_STATUS_DEAL:
+            if 'status' in data and tradeStatusMap[str(data['status'])]==STATUS_ALLTRADED:
                 trade = VtTradeData()
                 trade.gatewayName = self.gatewayName
 
-                trade.symbol = BTC_USD_SPOT
+                trade.symbol = BTC_USD_FUTURE
                 trade.exchange = EXCHANGE_OKCOIN
                 trade.vtSymbol = '.'.join([trade.symbol, trade.exchange])
                 trade.orderID = str(data['order_id'])
                 trade.tradeID=  str(data['order_id'])
-                trade.direction, priceType = priceTypeMap[str(data['type'])]
-                trade.offset = tradeTypeMap[str(data['type'])]
+                trade.direction, offset = priceTypeMap[str(data['type'])]
 
 
-                trade.price=data['avg_price']
-                trade.volume=float(data['deal_amount'])
+
+                trade.price=data['price_avg']
+                trade.volume=float(data['unit_amount'])
                 trade.status=tradeStatusMap[str(data['status'])]
 
 
@@ -564,7 +574,7 @@ class Api(vnokcoin_usd.OkcoinApi):
     # ----------------------------------------------------------------------
     def spotUserInfo(self):
         """查询现货账户"""
-        USERINFO_RESOURCE = "/api/v1/userinfo.do"
+        USERINFO_RESOURCE = "/api/v1/future_userinfo.do"
         params ={}
         params['api_key'] = self.apiKey
         params['sign'] = buildMySign(params,self.secretKey)
@@ -574,7 +584,11 @@ class Api(vnokcoin_usd.OkcoinApi):
     def onSpotUserInfo(self, data):
         """回调函数"""
         # 持仓信息
-        for symbol in ['btc', 'usd']:
+        if not data['result']:
+            print "userInfo Error"
+            return
+        for symbol in ['btc']:
+
                 pos = VtPositionData()
                 pos.gatewayName = self.gatewayName
 
@@ -583,19 +597,61 @@ class Api(vnokcoin_usd.OkcoinApi):
                 pos.vtPositionName = symbol+"_"+self.gatewayName
                 pos.direction = DIRECTION_NET
 
-                funds=data['info']['funds']
-                pos.frozen = float(funds['freezed']['%s' %symbol])
-                pos.position = float(funds['free']['%s' %symbol])
+                funds=data['info'][symbol]
+                #pos.frozen = float(funds['account_rights'])
+                pos.position = float(funds['account_rights'])
 
                 self.gateway.onPosition(pos)
 
-        account = VtAccountData()
+                account = VtAccountData()
 
-        account.gatewayName = self.gatewayName
-        account.accountID = self.gatewayName
-        account.vtAccountID = account.accountID
-        account.balance = float(funds['asset']['total'])
-        self.gateway.onAccount(account)
+                account.gatewayName = self.gatewayName
+                account.accountID = self.gatewayName
+                account.vtAccountID = account.accountID
+                account.margin=float(funds['risk_rate'])
+                account.balance = float(funds['account_rights'])
+                self.gateway.onAccount(account)
+    # ----------------------------------------------------------------------
+
+    def spotUserInfo_4fix(self):
+        """查询现货账户"""
+        USERINFO_RESOURCE = "/api/v1/future_userinfo_4fix.do"
+        params = {}
+        params['api_key'] = self.apiKey
+        params['sign'] = buildMySign(params, self.secretKey)
+        self.sendRequest(params, self.onSpotUserInfo_4fix, USERINFO_RESOURCE)
+
+    # ----------------------------------------------------------------------
+
+    def onSpotUserInfo_4fix(self, data):
+        """回调函数"""
+        # 持仓信息
+        if not data['result']:
+            print "userInfo Error"
+            return
+        for symbol in ['btc']:
+            pos = VtPositionData()
+            pos.gatewayName = self.gatewayName
+
+            pos.symbol = symbol
+            pos.vtSymbol = symbol
+            pos.vtPositionName = symbol + "_" + self.gatewayName
+            pos.direction = DIRECTION_NET
+
+            funds = data['info'][symbol]
+            pos.frozen = float(funds['freeze'])
+            pos.position = float(funds['account_rights'])
+
+            self.gateway.onPosition(pos)
+
+            account = VtAccountData()
+
+            account.gatewayName = self.gatewayName
+            account.accountID = self.gatewayName
+            account.vtAccountID = account.accountID
+            account.margin = float(funds['risk_rate'])
+            account.balance = float(funds['balance'])
+            self.gateway.onAccount(account)
 
     # ----------------------------------------------------------------------
 
@@ -604,17 +660,25 @@ class Api(vnokcoin_usd.OkcoinApi):
         self.lastOrderID = ''
         """发送委托"""
 
-        if params.direction == DIRECTION_LONG:
-            direction='buy'
-        else:
-            direction = 'sell'
-
-        TRADE_RESOURCE = "/api/v1/trade.do"
+        TRADE_RESOURCE = "/api/v1/future_trade.do"
         paramsDict = {
             'api_key': self.apiKey,
-            'symbol': 'btc_cny',
-            'type': direction
+            'symbol': 'btc_usd',
+            'symbol': 'btc_usd',
+            'contract_type': CONTRACT_TYPE
         }
+        if params.orderStyle==1:
+            self.tradeFlag_2=False
+        if params.direction==DIRECTION_LONG and params.offset==OFFSET_OPEN:
+            tradeType=1
+        elif params.direction==DIRECTION_SHORT and params.offset==OFFSET_OPEN:
+            tradeType=2
+        elif params.direction==DIRECTION_LONG and params.offset==OFFSET_CLOSE:
+            tradeType=3
+        elif params.direction==DIRECTION_SHORT and params.offset==OFFSET_CLOSE:
+            tradeType=4
+
+        paramsDict['type'] = tradeType
         if params.price:
             paramsDict['price'] = params.price
         if params.volume:
@@ -665,6 +729,25 @@ class Api(vnokcoin_usd.OkcoinApi):
 
     # ----------------------------------------------------------------------
 
+    # 从策略例调用的接口
+    def getTrades_huotou(self, orderID):
+        """查询最近的成交订单"""
+        ORDER_INFO_RESOURCE = "/api/v1/future_order_info.do"
+        params = {
+                'api_key': self.apiKey,
+                'symbol': 'btc_usd',
+                'contract_type': CONTRACT_TYPE,
+                'order_id': orderID
+        }
+        params['sign'] = buildMySign(params, self.secretKey)
+        result = httpPost(OKCOIN_HOST, ORDER_INFO_RESOURCE, params)
+
+        if result['result'] and len(result['orders']) > 0:
+            orderStatus = self.onGetTrade(result)
+            return orderStatus
+        else:
+            return False
+    # ----------------------------------------------------------------------
     def onCancelOrder(self,data):
         # if data['result'] == 'success':
         #     print "撤单完成"

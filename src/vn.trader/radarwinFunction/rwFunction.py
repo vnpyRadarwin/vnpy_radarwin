@@ -13,7 +13,8 @@ TRADE_TYPE_BUY = 'buy'
 TRADE_TYPE_SELL = 'sell'
 SYMBOL_CNY='cny'
 SYMBOL_BTC='btc'
-OKCOINRESTURL = 'www.okcoin.cn'
+OKCOIN_CNY_RESTURL = 'www.okcoin.cn'
+OKCOIN_USD_RESTURL = 'www.okcoin.com'
 
 THREAD_INTERVAL=0.5
 
@@ -68,20 +69,30 @@ def getPosition_1(params, positionDict, price, pos):
     return True
 #----------------------------------------------------------------------
 #okcoin的K线数据取得
-def get_kline(interval=1,type='min',size=300,gatewayName='OKCOIN'):
-    if gatewayName=='OKCOIN':
-        data=__kline_okcoin(interval,type,size)
+def get_kline(interval=1,type='min',gatewayName='OKCOIN_CNY',size=300):
+    if gatewayName=='OKCOIN_CNY':
+        data=__kline_okcoin_cny(interval,type,size)
+        return data
+    elif gatewayName=='OKCOIN_USD':
+        data=__kline_okcoin_usd(interval,type,size)
         return data
     elif gatewayName=='HUOBI':
         data=__kline_huobi(interval,type,size)
         return data
 
-def __kline_okcoin(interval,type,size):
+def __kline_okcoin_cny(interval,type,size):
     KLILNE_RESOURCE = "/api/v1/kline.do"
     kline=str(interval)+type
 
     params = 'symbol=%(symbol)s&type=%(type)s&size=%(size)s' % {'symbol': 'btc_cny', 'type': kline, 'size': size}
-    return __httpGet(OKCOINRESTURL, KLILNE_RESOURCE, params)
+    return __httpGet(OKCOIN_CNY_RESTURL, KLILNE_RESOURCE, params)
+
+def __kline_okcoin_usd(interval,type,size):
+    KLILNE_RESOURCE = "/api/v1/kline.do"
+    kline=str(interval)+type
+
+    params = 'symbol=%(symbol)s&type=%(type)s&size=%(size)s' % {'symbol': 'btc_usd', 'type': kline, 'size': size}
+    return __httpGet(OKCOIN_USD_RESTURL, KLILNE_RESOURCE, params)
 
 def __httpGet(url,resource,params=''):
     conn = httplib.HTTPSConnection(url, timeout=10)
