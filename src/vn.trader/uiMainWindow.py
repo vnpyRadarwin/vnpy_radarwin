@@ -183,7 +183,7 @@ class MainWindow(QtGui.QMainWindow):
             sysMenu.addAction(connectOandaAction)
         # if 'OKCOIN_CNY' in self.mainEngine.gatewayDict:
         #     sysMenu.addAction(connectOkcoinAction)
-        if 'OKCOIN_CNY' in self.mainEngine.gatewayDict:
+        if 'OKCOIN' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectCnyOkcoinAction)
         if 'OKCOIN_USD_SPOT' in self.mainEngine.gatewayDict:
              sysMenu.addAction(connectUsdSpotOkcoinAction)
@@ -313,14 +313,14 @@ class MainWindow(QtGui.QMainWindow):
         self.mainEngine.connect('OANDA')
         
     #----------------------------------------------------------------------
-    def connectOkcoin(self):
-        """连接OKCOIN"""
-        self.mainEngine.connect('OKCOIN_CNY')
+    # def connectOkcoin(self):
+    #     """连接OKCOIN"""
+    #     self.mainEngine.connect('OKCOIN_CNY')
 
     # ----------------------------------------------------------------------
     def connectCnyOkcoin(self):
         """连接OKCOIN"""
-        self.mainEngine.connect('OKCOIN_CNY')
+        self.mainEngine.connect('OKCOIN')
 
     #----------------------------------------------------------------------
     def connectUsdSpotOkcoin(self):

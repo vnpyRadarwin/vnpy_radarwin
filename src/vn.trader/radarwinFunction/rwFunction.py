@@ -69,8 +69,8 @@ def getPosition_1(params, positionDict, price, pos):
     return True
 #----------------------------------------------------------------------
 #okcoin的K线数据取得
-def get_kline(interval=1,type='min',gatewayName='OKCOIN_CNY',size=300):
-    if gatewayName=='OKCOIN_CNY':
+def get_kline(interval=1,type='min',gatewayName='OKCOIN',size=300):
+    if gatewayName=='OKCOIN':
         data=__kline_okcoin_cny(interval,type,size)
         return data
     elif gatewayName=='OKCOIN_USD':

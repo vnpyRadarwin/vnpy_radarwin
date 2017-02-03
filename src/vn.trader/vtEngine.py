@@ -146,8 +146,8 @@ class MainEngine(object):
 
         try:
             from okcoinGateway_cny.okcoinGateway_cny import OkcoinGateway
-            self.addGateway(OkcoinGateway, 'OKCOIN_CNY')
-            self.gatewayDict['OKCOIN_CNY'].setQryEnabled(True)
+            self.addGateway(OkcoinGateway, 'OKCOIN')
+            self.gatewayDict['OKCOIN'].setQryEnabled(True)
         except Exception, e:
             print e
 

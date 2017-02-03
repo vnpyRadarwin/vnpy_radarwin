@@ -19,7 +19,7 @@ ORDER_TYPE_SELL = u'卖'
 EXCHANGE_HUOBI='HUOBI'     # HUOBI比特币交易所
 
 #每个交易所对应的可交易对象以及货币类型
-EXCHANGE_SYMBOL={'OKCOIN_CNY':['BTC','CNY'],
+EXCHANGE_SYMBOL={'OKCOIN':['BTC','CNY'],
                 'HUOBI':['BTC','CNY']
                 }
 
