@@ -20,13 +20,14 @@ from radarwinFunction.rwDbConnection import *
 from radarwinFunction.rwConstant import *
 from radarwinFunction.rwLoggerFunction import *
 from radarwinFunction.rwFunction import *
+from radarwinFunction.weixinWarning import *
 
 ########################################################################
 class Bolling(CtaTemplate):
     """布林带突破系统"""
     className = 'Bolling'
-    author = u'panhao'
-    tablename = 'bolling_trade_list_panhao'
+    author = u'vista'
+    tablename = 'bolling_strategy_okcoin'
     # 策略参数
     bollingLength = 30
     atrFactor = 6
@@ -36,6 +37,8 @@ class Bolling(CtaTemplate):
     trailingPercent = 0.2  # 百分比移动止损
     initDays = 100  # 初始化数据所用的天数
     slip = 3       # 滑点
+    messagetunnel = 8 # 微信群组
+    totag = 3  # 微信群组
     #账户资金变量
     btcnum = 0
     cnynum = 0
@@ -64,7 +67,7 @@ class Bolling(CtaTemplate):
     trendMa = 0
     lasttrendMa = 0
     trendMaArray = np.zeros(bufferSize)
-    lots = 0.01             #交易手数
+    lots = 1.5           #交易手数
     entryPrice = 0
     signal = 0
     intraTradeHigh = 0.1  # 移动止损用的持仓期内最高价
@@ -130,7 +133,7 @@ class Bolling(CtaTemplate):
 
         #data = self.dbCon.getMySqlData(SQL, self.initDays, DATABASE_RW_TRADING)
         #K线历史数据取得(如1分钟：interval=1，tyep=K_LINE_STYLE_MINUTE)
-        data=get_kline(interval=1,type=K_LINE_STYLE_HOUR)
+        data=get_kline(interval=1,type=K_LINE_STYLE_HOUR,gatewayName='HUOBI')
 
         for d in data:
             bar = CtaBarData()
@@ -244,9 +247,9 @@ class Bolling(CtaTemplate):
         #print tickHour , self.barHour
 
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
-        #if tickMinute != self.barMinute:    #一分钟
+        if tickMinute != self.barMinute:    #一分钟
         #if ((tickMinute != self.barMinute and tickMinute % 60 == 0) or not self.bar):  #五分钟
-        if tickHour != self.barHour or not self.bar:  #1小时
+        #if tickHour != self.barHour or not self.bar:  #1小时
             if self.bar:
                 self.onBar(self.bar)
 
@@ -265,7 +268,7 @@ class Bolling(CtaTemplate):
             bar.datetime = tick.datetime  # K线的时间设为第一个Tick的时间
 
             self.bar = bar  # 这种写法为了减少一层访问，加快速度
-            #self.barMinute = tickMinute  # 更新当前的分钟
+            self.barMinute = tickMinute  # 更新当前的分钟
             self.barHour = tickHour
             print 'K线已更新，最近K线时间：',self.barHour,bar.datetime,tickHour
             #print 'btc:',self.btcnum,'cny:',self.cnynum
@@ -459,7 +462,10 @@ class Bolling(CtaTemplate):
     # ----------------------------------------------------------------------
     def onOrder(self, order):
         """收到委托变化推送（必须由用户继承实现）"""
-        print 'orderinfo:'+ order.direction, order.price, order.tradedVolume
+        if order.status == "未成交":
+            sendMessage =  "趋势订单未成交，挂单价：" + str(order.price) +  " 挂单量：" + str(order.totalVolume) + " 时间：" + str(datetime.now()) +  "  请尽快处理。"
+            send_msg(self.messagetunnel, sendMessage,self.totag)
+            print sendMessage
         pass
 
     def onTrade(self, trade):
@@ -468,7 +474,8 @@ class Bolling(CtaTemplate):
             tradedirection = trade.direction.encode('utf-8') + '平'
         else :
             tradedirection = trade.direction.encode('utf-8') + '开'
-
+        sendMessage = '趋势' + tradedirection + ',' + '价格：' + str(trade.price) + ',' + '量:' + str(trade.volume) + ',' + '时间：' + str(datetime.now())
+        send_msg(self.messagetunnel,sendMessage,self.totag)
         value = [tradedirection, trade.price, trade.volume, self.intraTradeHigh, self.intraTradeLow, datetime.now(), self.lasttradetype, self.direction]
         sqlcontent = 'insert into ' + self.tablename + '(trade_type,price,volume,intrahigh,intralow,trade_time,lasttradetype,pos) values(%s,%s,%s,%s,%s,%s,%s,%s)'
         #print  '价格：',trade.price
@@ -490,73 +497,76 @@ class Bolling(CtaTemplate):
 
 
 if __name__ == '__main__':
+    data=get_kline(interval=1,type=K_LINE_STYLE_HOUR,gatewayName='HUOBI')
+    print data
+
     # ----------------------------------------------------------------------
     # 提供直接双击回测的功能
     # 导入PyQt4的包是为了保证matplotlib使用PyQt4而不是PySide，防止初始化出错
-    '''
-    from ctaBacktesting import *
-    from PyQt4 import QtCore, QtGui
-
-    # 创建回测引擎
-    engine = BacktestingEngine()
-
-    # 设置引擎的回测模式为K线
-    engine.setBacktestingMode(engine.BAR_MODE)
-
-    # 设置回测用的数据起始日期
-    engine.setStartDate('20120101')
-
-    # 设置产品相关参数
-    engine.setSlippage(0.2)  # 股指1跳
-    engine.setRate(0.3 / 10000)  # 万0.3
-    engine.setSize(300)  # 股指合约大小
-
-    # 设置使用的历史数据库
-    engine.setDatabase(MINUTE_DB_NAME, 'IF0000')
-
-    # 在引擎中创建策略对象
-    d = {'atrLength': 11}
-    engine.initStrategy(Bolling, d)
-
-    # 开始跑回测
-    engine.runBacktesting()
-
-    # 显示回测结果
-    engine.showBacktestingResult()
-
-    ## 跑优化
-    # setting = OptimizationSetting()                 # 新建一个优化任务设置对象
-    # setting.setOptimizeTarget('capital')            # 设置优化排序的目标是策略净盈利
-    # setting.addParameter('atrLength', 11, 12, 1)    # 增加第一个优化参数atrLength，起始11，结束12，步进1
-    # setting.addParameter('atrMa', 20, 30, 5)        # 增加第二个优化参数atrMa，起始20，结束30，步进1
-    # engine.runOptimization(AtrRsiStrategy, setting) # 运行优化函数，自动输出结果
-    '''
-    conn = pymysql.connect(host='10.10.10.180',user='rw_trading',passwd='Abcd1234',db='dqpt',port=3306)
-    cur = conn.cursor()
-    backday = 100
-    cur.execute('SELECT sequence,opening_price,closing_price,max_price,min_price,volume_quantity,volume_price FROM (SELECT * FROM okcoincn_spot_btc_cny_aggregation_minute1 ORDER BY sequence DESC LIMIT 0,100)  AS total ORDER BY sequence ASC ')
-    data = cur.fetchall()
-    datalength = len(data)
-    h = np.zeros(backday)
-    l = np.zeros(backday)
-    o = np.zeros(backday)
-    c = np.zeros(backday)
-    volume = np.zeros(backday)
-    date = []
-    for i in range(backday):
-        o[i] = (data[i][1])
-        h[i] = (data[i][3])
-        l[i] = (data[i][4])
-        c[i] = (data[i][2])
-        volume[i] = (data[i][5])
-        date.append(data[i][0])
-    cur.close()
-    conn.close()
-#     h = h[::-1]
-#     l = l[::-1]
-#     c = c[::-1]
-#     o = o[::-1]
-    atr = talib.ATR(h,l,c,15)
+#     '''
+#     from ctaBacktesting import *
+#     from PyQt4 import QtCore, QtGui
+#
+#     # 创建回测引擎
+#     engine = BacktestingEngine()
+#
+#     # 设置引擎的回测模式为K线
+#     engine.setBacktestingMode(engine.BAR_MODE)
+#
+#     # 设置回测用的数据起始日期
+#     engine.setStartDate('20120101')
+#
+#     # 设置产品相关参数
+#     engine.setSlippage(0.2)  # 股指1跳
+#     engine.setRate(0.3 / 10000)  # 万0.3
+#     engine.setSize(300)  # 股指合约大小
+#
+#     # 设置使用的历史数据库
+#     engine.setDatabase(MINUTE_DB_NAME, 'IF0000')
+#
+#     # 在引擎中创建策略对象
+#     d = {'atrLength': 11}
+#     engine.initStrategy(Bolling, d)
+#
+#     # 开始跑回测
+#     engine.runBacktesting()
+#
+#     # 显示回测结果
+#     engine.showBacktestingResult()
+#
+#     ## 跑优化
+#     # setting = OptimizationSetting()                 # 新建一个优化任务设置对象
+#     # setting.setOptimizeTarget('capital')            # 设置优化排序的目标是策略净盈利
+#     # setting.addParameter('atrLength', 11, 12, 1)    # 增加第一个优化参数atrLength，起始11，结束12，步进1
+#     # setting.addParameter('atrMa', 20, 30, 5)        # 增加第二个优化参数atrMa，起始20，结束30，步进1
+#     # engine.runOptimization(AtrRsiStrategy, setting) # 运行优化函数，自动输出结果
+#     '''
+#     conn = pymysql.connect(host='10.10.10.180',user='rw_trading',passwd='Abcd1234',db='dqpt',port=3306)
+#     cur = conn.cursor()
+#     backday = 100
+#     cur.execute('SELECT sequence,opening_price,closing_price,max_price,min_price,volume_quantity,volume_price FROM (SELECT * FROM okcoincn_spot_btc_cny_aggregation_minute1 ORDER BY sequence DESC LIMIT 0,100)  AS total ORDER BY sequence ASC ')
+#     data = cur.fetchall()
+#     datalength = len(data)
+#     h = np.zeros(backday)
+#     l = np.zeros(backday)
+#     o = np.zeros(backday)
+#     c = np.zeros(backday)
+#     volume = np.zeros(backday)
+#     date = []
+#     for i in range(backday):
+#         o[i] = (data[i][1])
+#         h[i] = (data[i][3])
+#         l[i] = (data[i][4])
+#         c[i] = (data[i][2])
+#         volume[i] = (data[i][5])
+#         date.append(data[i][0])
+#     cur.close()
+#     conn.close()
+# #     h = h[::-1]
+# #     l = l[::-1]
+# #     c = c[::-1]
+# #     o = o[::-1]
+#     atr = talib.ATR(h,l,c,15)
     
     
     

@@ -19,13 +19,13 @@ OKCOIN_USD_RESTURL = 'www.okcoin.com'
 THREAD_INTERVAL=0.5
 
 HUOBI_KLINE_DICT={}
-HUOBI_KLINE_DICT['1min']=001
-HUOBI_KLINE_DICT['5min']=005
-HUOBI_KLINE_DICT['15min']=015
-HUOBI_KLINE_DICT['30min']=030
-HUOBI_KLINE_DICT['60min']=060
-HUOBI_KLINE_DICT['1day']=100
-HUOBI_KLINE_DICT['1week']=200
+HUOBI_KLINE_DICT['1min']='001'
+HUOBI_KLINE_DICT['5min']='005'
+HUOBI_KLINE_DICT['15min']='015'
+HUOBI_KLINE_DICT['30min']='030'
+HUOBI_KLINE_DICT['1hour']='060'
+HUOBI_KLINE_DICT['1day']='100'
+HUOBI_KLINE_DICT['1week']='200'
 
 
 
@@ -108,7 +108,7 @@ def __kline_huobi(interval,type,size):
     JSON_NAME = '%s_kline_%s_json.js'
 
     try:
-        kline = str(interval) + type
+        kline = str(interval) + str(type)
         if kline in HUOBI_KLINE_DICT:
             kline=HUOBI_KLINE_DICT[kline]
         else:
@@ -117,9 +117,13 @@ def __kline_huobi(interval,type,size):
         # 实时行情数据文件名
         fileName = JSON_NAME % ('btc', kline)
         # 实时行情数据地址
-        klineURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName+ '?' +'length='+size
+        klineURL = HOST_URL + '/' + HOST_MARKET_CNY + '/' + fileName+ '?' +'length='+str(size)
         result = requests.post(klineURL)
-        return result
+        if result.status_code == 200:
+            data = result.json()
+            return data
+        else:
+            return False
     except Exception, e:
         sleep(THREAD_INTERVAL)
         try:
