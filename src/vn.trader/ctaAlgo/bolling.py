@@ -27,7 +27,7 @@ class Bolling(CtaTemplate):
     """布林带突破系统"""
     className = 'Bolling'
     author = u'vista'
-    tablename = 'bolling_strategy_okcoin'
+    tablename = 'bolling_strategy'
     # 策略参数
     bollingLength = 30
     atrFactor = 6
@@ -38,7 +38,7 @@ class Bolling(CtaTemplate):
     initDays = 100  # 初始化数据所用的天数
     slip = 3       # 滑点
     messagetunnel = 8 # 微信群组
-    totag = 3  # 微信群组
+    totag = 4  # 微信群组
     #账户资金变量
     btcnum = 0
     cnynum = 0
@@ -247,9 +247,9 @@ class Bolling(CtaTemplate):
         #print tickHour , self.barHour
 
         # 当推送来的tick数据分钟数不等于指定周期时，生成新的K线
-        if tickMinute != self.barMinute:    #一分钟
+        #if tickMinute != self.barMinute:    #一分钟
         #if ((tickMinute != self.barMinute and tickMinute % 60 == 0) or not self.bar):  #五分钟
-        #if tickHour != self.barHour or not self.bar:  #1小时
+        if tickHour != self.barHour or not self.bar:  #1小时
             if self.bar:
                 self.onBar(self.bar)
 
