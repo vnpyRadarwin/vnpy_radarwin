@@ -45,6 +45,7 @@ class OkcoinApi(object):
         self.reqQueue = Queue()  # 请求队列
         self.reqThread = Thread(target=self.processQueue)  # 请求处理线程
         self.streamPricesThread = Thread(target=self.processStreamPrices)  # 实时行情线程
+        #self.streamDepthThread = Thread(target=self.processStreamDepth)  # 实时深度线程
         self.DEBUG = False
         self.spotTicker=['btc_usd']
         #######################
@@ -61,6 +62,7 @@ class OkcoinApi(object):
         self.active = True
         self.reqThread.start()
         self.streamPricesThread.start()
+        #self.streamDepthThread.start()
     # ----------------------------------------------------------------------
 
     def processQueue(self):
@@ -162,24 +164,28 @@ class OkcoinApi(object):
 
     # ----------------------------------------------------------------------
 
-    # def processRequestDepth(self,symbol,depth):
-    #     """发送请求并通过回调函数推送数据结果"""
-    #     result = None
-    #     error = None
-    #
-    #     try:
-    #         fileName=JSON_NAME % (depth, symbol)
-    #         deptURL=HOST_URL+'/'+HOST_MARKET_CNY+'/'+fileName
-    #         result = requests.post(deptURL)
-    #     except Exception, e:
-    #         sleep(0.5)
-    #         try:
-    #             result = requests.post(deptURL)
-    #         except Exception, e:
-    #             print "Depty Data Connect Fail"
-    #             error = e
-    #
-    #     return result, error
+    def processRequestDepth(self,symbol):
+        """实时数据请求"""
+        # result,tickError = reConnection_tick(times=RECONNECTION_TIMES,host=tickerURL,sleepTime=RECONNECTION_SLEEPTIMES)
+        tickError=False
+        result=None
+        TICKER_RESOURCE = "/api/v1/future_depth.do"
+        try:
+            params = ''
+            if symbol:
+                params = 'symbol=%(symbol)s&contract_type=%(contract_type)s' % {'symbol': symbol,'contract_type':CONTRACT_TYPE}
+            result = self.httpGet(HOST_URL,TICKER_RESOURCE,params)
+        except Exception, e:
+             sleep(THREAD_INTERVAL)
+             try:
+                 result = self.httpGet(HOST_URL,TICKER_RESOURCE,params)
+             except Exception, e:
+                 print "Depth Data Connect Fail"
+                 sendMessage=u'OKCOIN美国站的期货深度数据连接中断,10分钟后重新连接'
+                 #send_msg(WEIXIN_MESSAGE_ERROR,sendMessage)
+                 tickError = True
+
+        return result, tickError
 
     # ----------------------------------------------------------------------
 
@@ -229,30 +235,38 @@ class OkcoinApi(object):
         # 首先获取所有合约的代码
         while self.active:
             for symbol in self.spotTicker:
-                error =False
                 sleep(THREAD_INTERVAL)
-                data, error = self.processRequestTicker(symbol)
-                if error:
+                tickData, tickError = self.processRequestTicker(symbol)
+                depthData, depthError = self.processRequestDepth(symbol)
+                if tickError or depthError:
                     # 1分钟后在连接
                     sleep(RECONNECTION_INTERVAL)
-                    print "tick data reconnection"
                     break
 
                 try:
-                    self.onTicker(data)
+                    self.onTicker(tickData,depthData)
                 except Exception,e:
-                    print "tick error:",data
-                    #self.onError(str(data))
+                    print "tick error:",tickData,depthData
 
-                # r, error = self.processRequestDepth(symbol,'depth')
-                # try:
-                #     if r.status_code == 200:
-                #         data = r.json()
-                #         self.onDepth(data)
-                # except Exception,e:
-                #     self.onError(str(e))
-                #     return
+    # ----------------------------------------------------------------------
 
+    def processStreamDepth(self):
+        """获取深度推送"""
+        # 首先获取所有合约的代码
+        while self.active:
+            for symbol in self.spotTicker:
+                sleep(THREAD_INTERVAL)
+                data, error = self.processRequestDepth(symbol)
+                if error:
+                    # 10分钟后在连接
+                    sleep(RECONNECTION_INTERVAL)
+                    print "depth data reconnection"
+                    break
+
+                try:
+                    self.onDepth(data)
+                except Exception, e:
+                    print "tick error:", data
 
     #----------------------------------------------------------------------
     def onMessage(self, ws, evt):

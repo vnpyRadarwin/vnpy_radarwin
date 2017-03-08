@@ -129,7 +129,17 @@ class VtGateway(object):
         # 通用事件
         event1 = Event(type_=EVENT_CONTRACT)
         event1.dict_['data'] = contract
-        self.eventEngine.put(event1)        
+        self.eventEngine.put(event1)
+
+    # ----------------------------------------------------------------------
+    #Radarwin Add
+    def onGateway(self, gateway):
+        """持仓信息推送"""
+        # 通用事件
+        event1 = Event(type_=EVENT_GATEWAY)
+        event1.dict_['data'] = gateway
+        self.eventEngine.put(event1)
+
     
     #----------------------------------------------------------------------
     def connect(self):

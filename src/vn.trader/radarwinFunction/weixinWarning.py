@@ -18,7 +18,7 @@ def send_msg(agentid,message,totag=3):
     print "send_msg"
     url = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=" + get_token()
     values = """{"touser" : "" ,
-      "toparty":"",
+      "topaerty":"",
       "totag":"%s",
       "msgtype":"text",
       "agentid":"%s",

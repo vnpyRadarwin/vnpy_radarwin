@@ -77,13 +77,16 @@ class CtaEngine_2(object):
         self.engineType = ENGINETYPE_TRADING
         
         # 注册事件监听
-        self.registerEvent()
+        self.eventEngine.register(EVENT_GATEWAY, self.processGatewayEvent)
 
-        self.positionDict_okcoin={}
-        self.positionDict_huobi={}
-        self.posGatwayDict_okcoin={}
-        self.posGatwayDict_huobi={}
+
+        self.positionDict_inf2={}
+        self.positionDict_inf1={}
+        self.posGatwayDict_inf2={}
+        self.posGatwayDict_inf1={}
         self.dbCon = rwDbConnection()
+
+        self.gatewayNameDict={}
 
 
     #----------------------------------------------------------------------
@@ -214,6 +217,15 @@ class CtaEngine_2(object):
                         self.sendOrder(so.vtSymbol, so.orderType, price, so.volume, so.strategy)
                         del self.workingStopOrderDict[so.stopOrderID]
 
+    # ----------------------------------------------------------------------
+    def processGatewayEvent(self,event):
+        gatewayName = event.dict_['data']
+        if not self.gatewayNameDict:
+            self.gatewayNameDict[INTERFACE_1]=gatewayName
+        else:
+            self.gatewayNameDict[INTERFACE_2] = gatewayName
+            self.registerEvent()
+
     #----------------------------------------------------------------------
     def processTickEvent(self, event):
         """处理行情推送"""
@@ -238,25 +250,25 @@ class CtaEngine_2(object):
                 strategy.onTick(ctaTick)
     
     #----------------------------------------------------------------------
-    def processOrderEvent_huobi(self, event):
+    def processOrderEvent_inf1(self, event):
         """处理委托推送"""
         order = event.dict_['data']
         
         if order.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[order.vtOrderID]
-            strategy.onOrder_huobi(order)
+            strategy.onOrder_inf1(order)
 
     # ----------------------------------------------------------------------
-    def processOrderEvent_okcoin(self, event):
+    def processOrderEvent_inf2(self, event):
         """处理委托推送"""
         order = event.dict_['data']
 
         if order.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[order.vtOrderID]
-            strategy.onOrder_okcoin(order)
+            strategy.onOrder_inf2(order)
     
     #----------------------------------------------------------------------
-    def processTradeEvent_huobi(self, event):
+    def processTradeEvent_inf1(self, event):
         """处理成交推送"""
         trade = event.dict_['data']
 
@@ -269,7 +281,7 @@ class CtaEngine_2(object):
             else:
                 strategy.pos -= trade.volume
 
-            strategy.onTrade_huobi(trade)
+            strategy.onTrade_inf1(trade)
 
         # 更新持仓缓存数据
         if trade.vtSymbol in self.tickStrategyDict:
@@ -281,7 +293,7 @@ class CtaEngine_2(object):
             posBuffer.updateTradeData(trade)
 
     # ----------------------------------------------------------------------
-    def processTradeEvent_okcoin(self, event):
+    def processTradeEvent_inf2(self, event):
         """处理成交推送"""
         trade = event.dict_['data']
 
@@ -295,7 +307,7 @@ class CtaEngine_2(object):
             else:
                 strategy.pos -= trade.volume
 
-            strategy.onTrade_okcoin(trade)
+            strategy.onTrade_inf2(trade)
 
         # 更新持仓缓存数据
         if trade.vtSymbol in self.tickStrategyDict:
@@ -307,18 +319,18 @@ class CtaEngine_2(object):
             posBuffer.updateTradeData(trade)
 
     #----------------------------------------------------------------------
-    def processPositionEvent_huobi(self, event):
+    def processPositionEvent_inf1(self, event):
         """处理持仓推送"""
         pos = event.dict_['data']
         # 账户信息推送  Radarwin add Start
         if pos.gatewayName in EXCHANGE_SYMBOL:
             if pos.vtSymbol.upper() in EXCHANGE_SYMBOL[pos.gatewayName]:
-                self.positionDict_huobi[pos.vtSymbol]=pos
-            if len(EXCHANGE_SYMBOL[pos.gatewayName])==len(self.positionDict_huobi):
+                self.positionDict_inf1[pos.vtSymbol]=pos
+            if len(EXCHANGE_SYMBOL[pos.gatewayName])==len(self.positionDict_inf1):
                 for name in self.strategyDict:
                     strategy = self.strategyDict[name]
-                    self.posGatwayDict_huobi[pos.gatewayName]=self.positionDict_huobi
-                    strategy.onPosition(self.posGatwayDict_huobi)
+                    self.posGatwayDict_inf1[pos.gatewayName]=self.positionDict_inf1
+                    strategy.onPosition(self.posGatwayDict_inf1)
                 #self.positionDict={}
         # 账户信息推送 Radarwin add End
 
@@ -332,18 +344,18 @@ class CtaEngine_2(object):
             posBuffer.updatePositionData(pos)
 
     # ----------------------------------------------------------------------
-    def processPositionEvent_okcoin(self, event):
+    def processPositionEvent_inf2(self, event):
         """处理持仓推送"""
         pos = event.dict_['data']  # 账户信息推送  Radarwin add Start
         if pos.gatewayName in EXCHANGE_SYMBOL:
             if pos.vtSymbol.upper() in EXCHANGE_SYMBOL[pos.gatewayName]:
-                self.positionDict_okcoin[pos.vtSymbol] = pos
+                self.positionDict_inf2[pos.vtSymbol] = pos
 
-            if len(EXCHANGE_SYMBOL[pos.gatewayName]) == len(self.positionDict_okcoin):
+            if len(EXCHANGE_SYMBOL[pos.gatewayName]) == len(self.positionDict_inf2):
                 for name in self.strategyDict:
                     strategy = self.strategyDict[name]
-                    self.posGatwayDict_okcoin[pos.gatewayName] = self.positionDict_okcoin
-                    strategy.onPosition(self.posGatwayDict_okcoin)
+                    self.posGatwayDict_inf2[pos.gatewayName] = self.positionDict_inf2
+                    strategy.onPosition(self.posGatwayDict_inf2)
                 #self.positionDict = {}
         # 账户信息推送 Radarwin add End
 
@@ -360,15 +372,16 @@ class CtaEngine_2(object):
     def registerEvent(self):
         """注册事件监听"""
         self.eventEngine.register(EVENT_TICK, self.processTickEvent)
-        self.eventEngine.register(EVENT_POSITION + "HUOBI", self.processPositionEvent_huobi)
-        self.eventEngine.register(EVENT_POSITION + "OKCOIN", self.processPositionEvent_okcoin)
-        #
-        self.eventEngine.register(EVENT_ORDER + "HUOBI", self.processOrderEvent_huobi)
-        self.eventEngine.register(EVENT_ORDER + "OKCOIN", self.processOrderEvent_okcoin)
 
-        self.eventEngine.register(EVENT_TRADE + "HUOBI", self.processTradeEvent_huobi)
-        self.eventEngine.register(EVENT_TRADE + "OKCOIN", self.processTradeEvent_okcoin)
- 
+        self.eventEngine.register(EVENT_POSITION + self.gatewayNameDict[INTERFACE_1], self.processPositionEvent_inf1)
+        self.eventEngine.register(EVENT_POSITION + self.gatewayNameDict[INTERFACE_2], self.processPositionEvent_inf2)
+        #
+        self.eventEngine.register(EVENT_ORDER + self.gatewayNameDict[INTERFACE_1], self.processOrderEvent_inf1)
+        self.eventEngine.register(EVENT_ORDER + self.gatewayNameDict[INTERFACE_2], self.processOrderEvent_inf2)
+
+        self.eventEngine.register(EVENT_TRADE + self.gatewayNameDict[INTERFACE_1], self.processTradeEvent_inf1)
+        self.eventEngine.register(EVENT_TRADE + self.gatewayNameDict[INTERFACE_2], self.processTradeEvent_inf2)
+
     #----------------------------------------------------------------------
     def insertData(self, dbName, collectionName, data):
         """插入数据到数据库（这里的data可以是CtaTickData或者CtaBarData）"""
@@ -551,8 +564,7 @@ class CtaEngine_2(object):
         #
         #     for setting in l:
         #         self.loadStrategy(setting)
-        if stratgey:
-            self.mainEngine.connect('HUOBI')
+
         data = self.dbCon.getMySqlData(GET_STRATEGY_MASTER,dbFlag=DATABASE_VNPY)
 
         setting = data[0]
@@ -561,7 +573,7 @@ class CtaEngine_2(object):
     # ----------------------------------------------------------------------
     #C/S模式启动策略函数 Radarwin add Start
     # def rw_loadSetting(self,stratgey):
-    #     self.mainEngine.connect_huobi('HUOBI', stratgey)
+    #     self.mainEngine.connect_inf1('HUOBI', stratgey)
     #     """读取策略配置"""
     #     SQL='SELECT strategy_name as name , strategy_class as className,symbol as vtSymbol FROM strategy_master WHERE strategy_name = %s'
     #     data = self.dbCon.getMySqlData(SQL, stratgey, DATABASE_VNPY)

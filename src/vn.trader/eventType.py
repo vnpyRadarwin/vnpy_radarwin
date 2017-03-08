@@ -34,6 +34,8 @@ EVENT_DATARECORDER_LOG = 'eDataRecorderLog' # 行情记录日志更新事件
 # Wind接口相关
 EVENT_WIND_CONNECTREQ = 'eWindConnectReq'   # Wind接口请求连接事件
 
+#Radarwin Add
+EVENT_GATEWAY = 'eGateway.'           # 多接口通知事件
 
 #----------------------------------------------------------------------
 def test():

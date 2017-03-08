@@ -194,6 +194,9 @@ class HuobiGateway(VtGateway):
 
         # 启动查询
         self.initQuery()
+
+        #设置接口名称
+        self.api.setGateway()
         #self.startQuery()
 
     #----------------------------------------------------------------------
@@ -316,6 +319,8 @@ class Api(vnhuobi.HuobiApi):
         #self.strategyName=''
 
         self.logger = rwLoggerFunction()
+
+
 
     #----------------------------------------------------------------------
     def qryInstruments(self):
@@ -706,7 +711,11 @@ class Api(vnhuobi.HuobiApi):
             return orderStatus
         else:
             return False
+    # ----------------------------------------------------------------------
+    def setGateway(self):
+        self.gateway.onGateway(self.gatewayName)
 
+    # ----------------------------------------------------------------------
     def onCancelOrder(self,data):
         # if data['result'] == 'success':
         #     print "撤单完成"

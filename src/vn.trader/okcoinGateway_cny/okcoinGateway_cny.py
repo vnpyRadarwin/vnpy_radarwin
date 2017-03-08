@@ -177,6 +177,9 @@ class OkcoinGateway(VtGateway):
         self.initQuery()
         self.startQuery()
 
+        #设置接口名称
+        self.api.setGateway()
+
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq):
         """订阅行情"""
@@ -566,9 +569,12 @@ class Api(vnokcoin_cny.OkcoinApi):
             else:
                 return False
 
+
+        #self.writeLog(u'成交信息查询完成')
+        #return result
                 #self.orderDict[trade.orderID] = trade
         #print "okcoin onGetTrade end"
-        self.writeLog(u'成交信息查询完成')
+
 
     # ----------------------------------------------------------------------
     def spotUserInfo(self):
@@ -694,6 +700,24 @@ class Api(vnokcoin_cny.OkcoinApi):
         else:
             return False
 
+    # ----------------------------------------------------------------------
+    def getUserInfo_huotou(self):
+        """查询现货账户"""
+        USERINFO_RESOURCE = "/api/v1/userinfo.do"
+        params ={}
+        params['api_key'] = self.apiKey
+        params['sign'] = buildMySign(params,self.secretKey)
+        result = httpPost(OKCOIN_HOST, USERINFO_RESOURCE, params)
+        if result['result']:
+            self.onSpotUserInfo(result)
+            return True
+        else:
+            return False
+    # ----------------------------------------------------------------------
+    def setGateway(self):
+        self.gateway.onGateway(self.gatewayName)
+
+    # ----------------------------------------------------------------------
     def onCancelOrder(self,data):
         # if data['result'] == 'success':
         #     print "撤单完成"

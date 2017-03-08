@@ -24,6 +24,8 @@ from radarwinFunction.rwConstant import *
 from radarwinFunction.rwLoggerFunction import *
 from radarwinFunction.rwFunction import *
 from radarwinFunction.weixinWarning import *
+from radarwinFunction.okcoinService import *
+from radarwinFunction.huobiService import *
 from vtGateway import *
 
 ########################################################################
@@ -31,7 +33,7 @@ class Price_Different(CtaTemplate_2):
     """价差测试"""
     className = 'Price_Different'
     author = u'vista'
-    tablename = 'bolling_okcoin_test'
+    tablename = 'arbitrage_1_test'
     # 策略参数
     bollingLength = 30
     atrFactor = 6
@@ -40,7 +42,7 @@ class Price_Different(CtaTemplate_2):
     maLength = 20  # 计算A均线的窗口数
     trailingPercent = 0.2  # 百分比移动止损
     initDays = 50  # 初始化数据所用的天数
-
+    messagetunnel = 4
     #账户资金变量
     btcnum = 0
     cnynum = 0
@@ -72,7 +74,7 @@ class Price_Different(CtaTemplate_2):
     trendMa = 0
     lasttrendMa = 0
     trendMaArray = np.zeros(bufferSize)
-    lots = 0.01             #交易手数
+    lots = 1          #交易手数
     signal = 0
     intraTradeHigh = 0.1  # 移动止损用的持仓期内最高价
     intraTradeLow = 9999.99999  # 移动止损用的持仓期内最低价
@@ -105,7 +107,22 @@ class Price_Different(CtaTemplate_2):
     cumProfit = 0
     sellstatus = 0
     buystatus = 0
-    slip = 3
+    slip = 10
+    lasthuobiorder = 0
+    lastokcoinorder = 0
+    testcondotion = 0
+    order_status_okcoin = 0
+    order_status_huobi = 0
+    entryPrice_okcoin = 0
+    entryPrice_huobi = 0
+    exitPrice_okcoin = 0
+    exitPrice_huobi = 0
+    lastentryorder_okcoin = ''
+    lastentryorder_huobi = ''
+    lastexitorder_okcoin = ''
+    lastexitorder_huobi = ''
+    trade_status_okcoin = 0
+    trade_status_huobi = 0
     # 参数列表，保存了参数的名称
     paramList = ['name',
                  'className',
@@ -127,6 +144,8 @@ class Price_Different(CtaTemplate_2):
         super(Price_Different, self).__init__(ctaEngine, setting)
         self.logger = rwLoggerFunction()
         self.dbCon = rwDbConnection()
+        self.okinfo = okcoinService()
+        self.hbinfo = huobiService()
         self.positionDict = {}
         self.tickDict={}
         self.orderDict={}
@@ -142,6 +161,8 @@ class Price_Different(CtaTemplate_2):
         # 策略时方便（更多是个编程习惯的选择）
         self.flag=False
         #self.orderCondition = Condition()
+
+        self.orderStatus=False
 
 
     # ----------------------------------------------------------------------
@@ -302,33 +323,120 @@ class Price_Different(CtaTemplate_2):
         #     # self.orderCondition.release()
         # elif order.gatewayName == "OKCOIN":
         #     self.orderDict[order.gatewayName] = order
+        #print 'orderinfo:'+ order.direction, order.price, order.tradedVolume
 
     # ----------------------------------------------------------------------
     def onOrder_huobi(self, order):
         self.orderDict[order.gatewayName]=order
+        if order.status == "未成交":
+            sendMessage =  "HUOBI订单未成交，挂单价：" + str(order.price) +  " 挂单量：" + str(order.totalVolume) + " 时间：" + str(datetime.now()) +  "  请尽快处理。"
+            send_msg(self.messagetunnel, sendMessage)
+            print sendMessage
+        print 'onOrder_huobi:', 'ID:', order.orderID, '成交量:', order.totalVolume, '总量:', order.tradedVolume, 'Status:', order.status
     # ----------------------------------------------------------------------
     def onOrder_okcoin(self, order):
         self.orderDict[order.gatewayName]=order
+        if order.status == "未成交":
+            sendMessage =  "OKCOIN订单未成交，挂单价：" + str(order.price) +  " 挂单量：" + str(order.totalVolume) + " 时间：" + str(datetime.now()) +  "  请尽快处理。"
+            send_msg(self.messagetunnel, sendMessage)
+            print sendMessage
+        print 'onOrder_okcoin:', 'ID:', order.orderID, '成交量:', order.totalVolume, '总量:', order.tradedVolume, 'Status:', order.status
 
 
     # ----------------------------------------------------------------------
     def onTrade(self, trade):
         pass
-        # if self.direction == 0 :
-        #     tradedirection = trade.direction.encode('utf-8') + '平'
-        # else :
-        #     tradedirection = trade.direction.encode('utf-8') + '开'
-        #
-        # value = [tradedirection, trade.price, trade.volume, self.intraTradeHigh, self.intraTradeLow, datetime.now(), self.lasttradetype, self.direction]
-        # sqlcontent = 'insert into ' + self.tablename + '(trade_type,price,volume,intrahigh,intralow,trade_time,lasttradetype,pos) values(%s,%s,%s,%s,%s,%s,%s,%s)'
-        # #print  '价格：',trade.price
-        # self.dbCon.insUpdMySqlData(sqlcontent, value,dbFlag=DATABASE_VNPY)
     # ----------------------------------------------------------------------
     def onTrade_huobi(self, trade):
         self.tradeDict[trade.gatewayName]=trade
+        # self.huobiexittime = datetime.now()
+        # print 'onTrade_huobi:', 'ID:',trade.orderID, 'Time:',self.huobiexittime ,'Price:', trade.price,'Direction:',trade.direction,'Status:',trade.status
+        # 根据订单ID更新订单状态
+        print "onTrade:huobi"
+        #print trade.orderID,self.lastentryorder_huobi,self.lastexitorder_huobi,type(trade.orderID),type(self.lastentryorder_huobi),type(self.lastexitorder_huobi)
+        #print trade.orderID == self.lastentryorder_huobi  ,trade.orderID == self.lastexitorder_huobi
+        #print trade.direction == "多",trade.direction == "空"
+        if trade.orderID == self.lastentryorder_huobi:
+            self.entryPrice_huobi = trade.price
+            self.trade_status_huobi = 1
+        elif trade.orderID == self.lastexitorder_huobi:
+            self.exitPrice_huobi = trade.price
+            self.trade_status_huobi = 2
+
+        #根据订单状态计算盈利以及插入交易记录
+        if self.trade_status_okcoin == 1 and self.trade_status_huobi == 1:
+            self.entryPrice = self.entryPrice_okcoin - self.entryPrice_huobi
+            sendMessage = "双边开仓成功，开仓价：" + str(self.entryPrice)+ ' ' + str(self.okcoinentrytime)
+            print sendMessage
+            send_msg(self.messagetunnel,sendMessage)
+        elif self.trade_status_okcoin == 2 and self.trade_status_huobi == 2:
+            self.exitPrice = self.exitPrice_okcoin - self.exitPrice_huobi
+            if trade.direction == "多":
+                self.profit = (self.exitPrice - self.entryPrice) * trade.volume
+                tradetype = "多"
+            elif trade.direction == "空":
+                self.profit = (self.entryPrice - self.exitPrice) * trade.volume
+                tradetype = "空"
+
+            sendMessage = "套利平" + tradetype + ",开仓价：" + str(self.entryPrice) + " 平仓价：" + str(self.exitPrice) + "量：" + str(
+                trade.volume) + "利润:" + str(self.profit)
+            print sendMessage
+            send_msg(self.messagetunnel, sendMessage)
+            self.trade_status_huobi = 0
+            self.trade_status_okcoin = 0
+            value = [tradetype,self.entryPrice,self.exitPrice,trade.volume,self.profit/trade.volume,self.profit,self.okcoinentrytime,self.okcoinexittime]
+            sqlcontent = 'insert into ' + self.tablename + '(trade_type,entry_price,exit_price,volume,point,profit,entry_time,exit_time) values(%s,%s,%s,%s,%s,%s,%s,%s)'
+            self.dbCon.insUpdMySqlData(sqlcontent, value, dbFlag=DATABASE_VNPY)
+        print self.trade_status_okcoin,self.trade_status_huobi
+
+
+
+
+        # print 'huobi_ontrade_time:',self.huobiexittime - self.huobientrytime
     # ----------------------------------------------------------------------
     def onTrade_okcoin(self, trade):
         self.tradeDict[trade.gatewayName]=trade
+        # self.okcoinexittime = datetime.now()
+        # 根据订单ID更新订单状态
+        print "onTrade:okcoin"
+        #print trade.orderID, self.lastentryorder_okcoin, self.lastexitorder_okcoin ,type(trade.orderID),type(self.lastentryorder_okcoin),type(self.lastexitorder_okcoin)
+        #print trade.orderID == self.lastentryorder_okcoin,trade.orderID == self.lastexitorder_okcoin
+        #print trade.direction == "多", trade.direction == "空"
+        if trade.orderID == self.lastentryorder_okcoin:
+            self.entryPrice_okcoin = trade.price
+            self.trade_status_okcoin = 1
+        elif trade.orderID == self.lastexitorder_okcoin:
+            self.exitPrice_okcoin = trade.price
+            self.trade_status_okcoin = 2
+
+        # 根据订单状态计算盈利以及插入交易记录
+        if self.trade_status_okcoin == 1 and self.trade_status_huobi == 1:
+            self.entryPrice = self.entryPrice_okcoin - self.entryPrice_huobi
+            sendMessage = "双边开仓成功，开仓价：" + str(self.entryPrice)+ ' ' +  str(self.okcoinentrytime)
+            print sendMessage
+            send_msg(self.messagetunnel, sendMessage)
+        elif self.trade_status_okcoin == 2 and self.trade_status_huobi == 2:
+            self.exitPrice = self.exitPrice_okcoin - self.exitPrice_huobi
+            if trade.direction == "空":
+                tradetype = "多"
+                self.profit = (self.exitPrice - self.entryPrice) * trade.volume
+            elif trade.direction == "多":
+                tradetype = "空"
+                self.profit = (self.entryPrice - self.exitPrice) * trade.volume
+
+            sendMessage = "套利平" + tradetype + ",开仓价：" + str(self.entryPrice) + " 平仓价：" + str(self.exitPrice) + "量：" + str(
+                trade.volume) + "利润:" + str(self.profit)
+            print sendMessage
+            send_msg(self.messagetunnel, sendMessage)
+            self.trade_status_huobi = 0
+            self.trade_status_okcoin = 0
+            value = [tradetype, self.entryPrice, self.exitPrice, trade.volume, self.profit/trade.volume,
+                     self.profit, self.okcoinentrytime, self.okcoinexittime]
+            sqlcontent = 'insert into ' + self.tablename + '(trade_type,entry_price,exit_price,volume,point,profit,entry_time,exit_time) values(%s,%s,%s,%s,%s,%s,%s,%s)'
+            self.dbCon.insUpdMySqlData(sqlcontent, value, dbFlag=DATABASE_VNPY)
+        print self.trade_status_okcoin, self.trade_status_huobi
+        #print 'onTrade_okcoin:','ID:',trade.orderID,trade.tradeID ,'Price:', trade.price,'Direction:',trade.direction,'Status:',trade.status
+        # print 'okcoin_ontrade_time:', self.okcoinexittime - self.okcoinentrytime
     # ----------------------------------------------------------------------
     def onTrade(self, trade):
         pass
@@ -345,15 +453,23 @@ class Price_Different(CtaTemplate_2):
 
     def __processQueue(self,gatewayName,tick):
         self.tickDict[gatewayName]=tick
-
+        #print self.tickDict,self.tickDict['HUOBI'].time
         if 'HUOBI' in self.tickDict and 'OKCOIN' in self.tickDict:
 
             huobi_lastprice = self.tickDict['HUOBI'].lastPrice
             okcoin_lastprice = self.tickDict['OKCOIN'].lastPrice
+            #print huobi_lastprice,okcoin_lastprice
             self.spread = okcoin_lastprice - huobi_lastprice
+            # 测试下单模块
+            # if self.testcondotion == 0:
+            #     self.lastokcoinorder = self.buy(self.tickDict['OKCOIN'].lastPrice - self.slip, 0.01, 'OKCOIN')
+            #     self.testcondotion = 1
+
+
+
             #每N个tick截取一次价差
             self.spreadtickcount += 1
-            if self.spreadtickcount == self.spreadtickbuffer:
+            if self.spreadtickcount == self.spreadtickbuffer :
                 self.calboundry(self.spread)
                 self.spreadtickcount = 0
 
@@ -373,188 +489,119 @@ class Price_Different(CtaTemplate_2):
 
             #print self.sellstatus,self.buystatus
 
+
+
+
+
+
             # 开仓模块
-            # 价差大于上边界开空  ，卖ok，买火币
+
             if self.trading == True and self.direction == 0 and abs(
-                                    self.upbandArray[-1] - self.lowbandArray[-1] > 10):
-                if self.spread > self.upbandArray[-1] and self.sellstatus:
-                    # print "yes:",abs(huobi_lastprice-okcoin_lastprice)
-                    # print "self.messageFlag:",self.messageFlag
+                                    self.upbandArray[-1] - self.lowbandArray[-1] ) > 10 and abs(self.spread) < 200 and self.trade_status_okcoin == 0 and self.trade_status_huobi == 0 \
+                    and self.order_status_huobi == 0 and self.order_status_okcoin == 0:
+                # 价差大于上边界开空  ，卖ok，买火币
+                if self.spread > self.upbandArray[-1] and self.sellstatus :
                     self.direction = -1
-                    self.entryPrice = self.spread
-                    self.sell(self.tickDict['OKCOIN'].lastPrice - self.slip, self.lots, 'OKCOIN')
-                    self.buy(self.tickDict['HUOBI'].lastPrice + self.slip , self.lots, 'HUOBI')
-                    sendMessage = "套利开空：" + str(self.entryPrice) + " 火币：" + str(
-                        huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                    #send_msg(sendMessage)
-                    print sendMessage
-                    # if huobi_lastprice > okcoin_lastprice:
-                    #     sellResult = getPosition("sell", self.positionDict_huobi, self.tickDict['HUOBI'], self.lots)
-                    #     buyResult = getPosition("buy", self.positionDict_okcoin, self.tickDict['OKCOIN'], self.lots)
-                    #     if sellResult and buyResult:
-                    #         #huobi:sell , okcoin:buy
-                    #         #self.vtSymbol=self.exSymbol['HUOBI']
-                    #         #self.sell(self.tickDict['HUOBI'].lastPrice-1, self.lots,'HUOBI')
-                    #         #self.vtSymbol = self.exSymbol['OKCOIN']
-                    #         #self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
-                    #
-                    #         #self.vtSymbol = self.exSymbol['HUOBI']
-                    #         #self.buy(self.tickDict['HUOBI'].lastPrice+1, self.lots,'HUOBI')
-                    #         # self.vtSymbol = self.exSymbol['OKCOIN']
-                    #         #self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
-                    #
-                    #         sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                    #         #print sendMessage
-                    #     else:
-                    #         print "钱币不足"
-                    # else:
-                    #     buyResult = getPosition("buy", self.positionDict_huobi, self.tickDict['HUOBI'], self.lots)
-                    #     sellResult = getPosition("sell", self.positionDict_okcoin, self.tickDict['OKCOIN'], self.lots)
-                    #     if buyResult and sellResult:
-                    #         # huobi:buy , okcoin:sell
-                    #
-                    #         #self.vtSymbol = self.exSymbol['HUOBI']
-                    #         #self.buy(self.tickDict['HUOBI'].lastPrice, self.lots)
-                    #         # self.vtSymbol = self.exSymbol['OKCOIN']
-                    #         #self.sell(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
-                    #
-                    #         #self.vtSymbol = self.exSymbol['HUOBI']
-                    #         #self.sell(self.tickDict['HUOBI'].lastPrice, self.lots)
-                    #         # self.vtSymbol = self.exSymbol['OKCOIN']
-                    #         #self.buy(self.tickDict['OKCOIN'].lastPrice, self.lots,'OKCOIN')
-                    #         sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                    #         #print sendMessage
-                    #     else:
-                    #         print "钱币不足"
+                    #self.entryPrice = self.spread
+                    self.lastentryorder_okcoin = self.sell(self.tickDict['OKCOIN'].lastPrice - self.slip, self.lots, 'OKCOIN')
+                    self.lastentryorder_okcoin = self.lastentryorder_okcoin.split('.')[1]
+                    #Panhao
+                    if self.lastentryorder_okcoin <> EMPTY_STRING:
+                        self.orderStatus=self.getTrades(self.lastentryorder_okcoin,gatewayName)
+
+
+                    print self.lastentryorder_okcoin
+                    self.order_status_okcoin = 1 # 更改ok开仓状态
+                    self.okcoinentrytime = datetime.now()
+                    #print 'okcoinentrytime:',self.okcoinentrytime
+                    self.lastentryorder_huobi = self.buy(self.tickDict['HUOBI'].lastPrice + self.slip , self.lots, 'HUOBI')
+                    self.lastentryorder_huobi = self.lastentryorder_huobi.split('.')[1]
+                    print self.lastentryorder_huobi
+                    self.order_status_huobi = 1   # 更改huobi开仓状态
+
+                    self.huobientrytime = datetime.now()
+
                 # 价差小于下边界开多, 卖火币，买OK
                 elif self.spread < self.lowbandArray[-1] and self.buystatus:
                     self.direction = 1
                     self.entryPrice = self.spread
-                    self.sell(self.tickDict['HUOBI'].lastPrice - self.slip, self.lots, 'HUOBI')
-                    self.buy(self.tickDict['OKCOIN'].lastPrice + self.slip , self.lots, 'OKCOIN')
-                    sendMessage = "套利开多：" + str(self.entryPrice) + " 火币：" + str(
-                        huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-                    #send_msg(sendMessage)
-                    print sendMessage
+                    self.lastentryorder_huobi = self.sell(self.tickDict['HUOBI'].lastPrice - self.slip, self.lots, 'HUOBI')
+                    self.lastentryorder_huobi = self.lastentryorder_huobi.split('.')[1]
+                    print self.lastentryorder_huobi
+                    self.order_status_huobi = 1  # 更改huobi开仓状态
+                    self.huobientrytime = datetime.now()
+                    #print 'huobientrytime:', self.huobientrytime
+                    self.lastentryorder_okcoin = self.buy(self.tickDict['OKCOIN'].lastPrice + self.slip , self.lots, 'OKCOIN')
+                    self.lastentryorder_okcoin = self.lastentryorder_okcoin.split('.')[1]
+                    self.okcoinentrytime = datetime.now()
+                    print self.lastentryorder_okcoin
+                    self.order_status_okcoin = 1  # 更改ok开仓状态
+                    self.okcoinentrytime = datetime.now()
 
             # 平仓模块
             # 多单平仓
-            if self.direction == 1 and self.spread > self.midbandArray[-1]:
-                self.direction = 0
-                self.exitPrice = self.midbandArray[-1]
-                self.profit = self.exitPrice - self.entryPrice
-                self.sell(self.tickDict['OKCOIN'].lastPrice - self.slip, self.lots, 'OKCOIN')
-                self.buy(self.tickDict['HUOBI'].lastPrice + self.slip, self.lots, 'HUOBI')
-                sendMessage = "套利平多：" + str(self.exitPrice) + " 火币：" + str(
-                     huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice) + "单次利润：" + str(self.profit)
-                # send_msg(sendMessage)
-                print sendMessage
-            # 空单平仓
-            if self.direction == -1 and self.spread < self.midbandArray[-1]:
-                self.direction = 0
-                self.exitPrice = self.midbandArray[-1]
-                self.profit = self.entryPrice - self.exitPrice
-                self.sell(self.tickDict['HUOBI'].lastPrice - self.slip, self.lots, 'HUOBI')
-                self.buy(self.tickDict['OKCOIN'].lastPrice + self.slip, self.lots, 'OKCOIN')
-                sendMessage = "套利平空：" + str(self.exitPrice) + " 火币：" + str(
-                     huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice) + "单次利润：" + str(self.profit)
-                # send_msg(sendMessage)
-                print sendMessage
-
-            # #价差大于设定值的时候
-            # #if abs(huobi_lastprice-okcoin_lastprice) > self.priceDifferent:
-            # if abs(huobi_price - okcoin_price) > self.priceDifferent:
-            #     #print "yes:",huobi_price-okcoin_price
-            #     #print "self.messageFlag:",self.messageFlag
-            #     if self.messageFlag:
-            #
-            #
-            #         self.messageFlag = False
-            #         #if huobi_lastprice > okcoin_lastprice:
-            #         positionDict_huobi = self.__getHuobiAccount()
-            #         positionDict_okcoin = self.__getOkcoinAccount()
-            #         if huobi_price > okcoin_price:
-            #             sellResult = getPosition_1("sell", positionDict_huobi, huobi_lastprice, self.lots)
-            #             buyResult = getPosition_1("buy", positionDict_okcoin, okcoin_lastprice, self.lots)
-            #             if sellResult and buyResult:
-            #                 #huobi:sell , okcoin:buy
-            #                 orderId=self.sell(self.tickDict['HUOBI'].lastPrice-self.margin, self.lots,'HUOBI')
-            #                 orderIdList=orderId.split('.')
-            #                 orderData=getOrderInfo(orderIdList[1])
-            #                 if 'status' in orderData and orderData['status'] == 2:
-            #                     self.buy(self.tickDict['OKCOIN'].lastPrice + self.margin, self.lots, 'OKCOIN')
-            #                     #orderId=self.buy(self.tickDict['OKCOIN'].lastPrice+self.margin, self.lots,'OKCOIN')
-            #                     # orderIdList = orderId.split('.')
-            #                     # orderData = orderinfo(orderIdList[1])
-            #                 else:
-            #                     print (u'火币卖单未成交，%s@%s' % (orderData['order_amount'], orderData['order_price']))
-            #
-            #
-            #                 #sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-            #                 #print sendMessage
-            #             else:
-            #                 if not sellResult:
-            #                     print (u'火币账户币不足无法执行卖出单')
-            #                 if not buyResult:
-            #                     print (u'OKCOIN账户钱不足无法执行买入单')
-            #         else:
-            #             buyResult = getPosition_1("buy", positionDict_huobi, huobi_lastprice, self.lots)
-            #             sellResult = getPosition_1("sell", positionDict_okcoin, okcoin_lastprice, self.lots)
-            #             if buyResult and sellResult:
-            #                 # huobi:buy , okcoin:sell
-            #                 orderId =self.buy(self.tickDict['HUOBI'].lastPrice+self.margin, self.lots,'HUOBI')
-            #                 orderIdList = orderId.split('.')
-            #                 orderData = getOrderInfo(orderIdList[1])
-            #                 if 'status' in orderData and orderData['status'] == 2:
-            #                     self.sell(self.tickDict['OKCOIN'].lastPrice - self.margin, self.lots, 'OKCOIN')
-            #                     # orderid=self.sell(self.tickDict['OKCOIN'].lastPrice - self.margin, self.lots, 'OKCOIN')
-            #                     # orderIdList = orderId.split('.')
-            #                     # orderData = orderinfo(orderIdList[1])
-            #                 else:
-            #                     print (u'火币买单未成交，%s@%s' % (orderData['order_amount'], orderData['order_price']))
-            #
-            #                 sendMessage = "套利执行：" + str(abs(huobi_lastprice - okcoin_lastprice)) + " 火币：" + str(huobi_lastprice) + " OKCOIN：" + str(okcoin_lastprice)
-            #                 print sendMessage
-            #             else:
-            #                 if not sellResult:
-            #                     print (u'OKCOIN账户币不足无法执行卖出单')
-            #                 if not buyResult:
-            #                     print (u'火币账户钱不足无法执行买入单')
-            # else:
-            #     self.messageFlag = True
-            # if self.count == len(self.huobi_price):
-            #     return
-            # else:
-            #     self.count = self.count + 1
-            # self.tickDict={}
-
-    def __getHuobiAccount(self):
-            data = getAccountInfo()
-            for symbol in ['btc', 'cny']:
-                self.positionDict_huobi[symbol] = float(data['available_%s_display' % symbol])
-            return self.positionDict_huobi
-
-    def __getOkcoinAccount(self):
-            data = userinfo()
-            funds = data['info']['funds']
-            for symbol in ['btc', 'cny']:
-                self.positionDict_okcoin[symbol] = float(funds['free'][symbol])
-            return self.positionDict_okcoin
+            if self.trade_status_okcoin == 1 and self.trade_status_huobi == 1:
+                if self.direction == 1 and self.spread > self.midbandArray[-1]:
+                    self.direction = 0
+                    self.exitPrice = self.midbandArray[-1]
+                    self.lastexitorder_okcoin = self.sell(self.tickDict['OKCOIN'].lastPrice - self.slip, self.lots, 'OKCOIN')
+                    self.lastexitorder_okcoin = self.lastexitorder_okcoin.split('.')[1]
+                    print self.lastexitorder_okcoin
+                    self.order_status_okcoin = 0  # 更改ok开仓状态
+                    self.okcoinexittime = datetime.now()
+                    #print 'okcoinentrytime:', self.okcoinentrytime
+                    self.lastexitorder_huobi = self.buy(self.tickDict['HUOBI'].lastPrice + self.slip, self.lots, 'HUOBI')
+                    self.lastexitorder_huobi = self.lastexitorder_huobi.split('.')[1]
+                    print self.lastexitorder_huobi
+                    self.order_status_huobi = 0  # 更改huobi开仓状态
+                    self.testcondotion = 1
+                # 空单平仓
+                if self.direction == -1 and self.spread < self.midbandArray[-1]:
+                    self.direction = 0
+                    self.exitPrice = self.midbandArray[-1]
+                    self.lastexitorder_huobi  = self.sell(self.tickDict['HUOBI'].lastPrice - self.slip, self.lots, 'HUOBI')
+                    self.lastexitorder_huobi = self.lastexitorder_huobi.split('.')[1]
+                    print self.lastexitorder_huobi
+                    self.order_status_huobi = 0  # 更改huobi开仓状态
+                    #self.huobientrytime = datetime.now()
+                    #print 'huobientrytime:', self.huobientrytime
+                    self.lastexitorder_okcoin = self.buy(self.tickDict['OKCOIN'].lastPrice + self.slip, self.lots, 'OKCOIN')
+                    self.lastexitorder_okcoin = self.lastexitorder_okcoin.split('.')[1]
+                    self.okcoinexittime = datetime.now()
+                    print self.lastexitorder_okcoin
+                    self.order_status_okcoin = 0  # 更改ok开仓状态
+                    self.testcondotion = 1
 
 
-    def __getHuobiOrder(self):
-        data = getAccountInfo()
-        for symbol in ['btc', 'cny']:
-            self.positionDict_huobi[symbol] = float(data['available_%s_display' % symbol])
-        return self.positionDict_huobi
+            self.tickDict={}
 
-
-    def __getOkcoinOrder(self):
-        data = userinfo()
-        funds = data['info']['funds']
-        for symbol in ['btc', 'cny']:
-            self.positionDict_okcoin[symbol] = float(funds['free'][symbol])
-        return self.positionDict_okcoin
+    # def __getHuobiAccount(self):
+    #         data = getAccountInfo()
+    #         for symbol in ['btc', 'cny']:
+    #             self.positionDict_huobi[symbol] = float(data['available_%s_display' % symbol])
+    #         return self.positionDict_huobi
+    #
+    # def __getOkcoinAccount(self):
+    #         data = userinfo()
+    #         funds = data['info']['funds']
+    #         for symbol in ['btc', 'cny']:
+    #             self.positionDict_okcoin[symbol] = float(funds['free'][symbol])
+    #         return self.positionDict_okcoin
+    #
+    #
+    # def __getHuobiOrder(self):
+    #     data = getAccountInfo()
+    #     for symbol in ['btc', 'cny']:
+    #         self.positionDict_huobi[symbol] = float(data['available_%s_display' % symbol])
+    #     return self.positionDict_huobi
+    #
+    #
+    # def __getOkcoinOrder(self):
+    #     data = userinfo()
+    #     funds = data['info']['funds']
+    #     for symbol in ['btc', 'cny']:
+    #         self.positionDict_okcoin[symbol] = float(funds['free'][symbol])
+    #     return self.positionDict_okcoin
 
     def calboundry(self,spread):
 

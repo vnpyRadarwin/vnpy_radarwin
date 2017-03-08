@@ -76,9 +76,8 @@ priceTypeMap = {}
 priceTypeMap['1'] = (DIRECTION_LONG, OFFSET_OPEN)
 priceTypeMap['2'] = (DIRECTION_SHORT, OFFSET_OPEN)
 priceTypeMap['3'] = (DIRECTION_LONG, OFFSET_CLOSE)
-priceTypeMap['3'] = (DIRECTION_SHORT, OFFSET_CLOSE)
-# priceTypeMap['buy_market'] = (DIRECTION_LONG, PRICETYPE_MARKETPRICE)
-# priceTypeMap['sell_market'] = (DIRECTION_SHORT, PRICETYPE_MARKETPRICE)
+priceTypeMap['4'] = (DIRECTION_SHORT, OFFSET_CLOSE)
+
 
 ############################################
 ## 成交单类型
@@ -134,7 +133,7 @@ class OkcoinGateway(VtGateway):
         self.leverage = 0
         self.connected = False
         self.dbCon = rwDbConnection()
-        self.userInfo_Mod=USERINFO_MODE_FULL
+
         self.userInfo_Method=''
     #----------------------------------------------------------------------
     def connect(self):
@@ -171,7 +170,7 @@ class OkcoinGateway(VtGateway):
         log.logContent = u'接口初始化成功'
         self.onLog(log)
         self.api.qryGenerateCnyContract()
-        if self.userInfo_Mod==USERINFO_MODE_FULL:
+        if self.api.userInfo_Mod==USERINFO_MODE_FULL:
             self.userInfo_Method=self.api.spotUserInfo
         else:
             self.userInfo_Method = self.api.spotUserInfo_4fix
@@ -187,6 +186,9 @@ class OkcoinGateway(VtGateway):
         # 启动查询
         self.initQuery()
         #self.startQuery()
+
+        #设置接口名称
+        self.api.setGateway()
 
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq):
@@ -301,6 +303,7 @@ class Api(vnokcoin_future_usd.OkcoinApi):
         self.tradeFlag_2=True
         self.logger = rwLoggerFunction()
         #self.strategyName=''
+        self.userInfo_Mod = USERINFO_MODE_FULL
 
 
     #----------------------------------------------------------------------
@@ -388,11 +391,13 @@ class Api(vnokcoin_future_usd.OkcoinApi):
     #     self.sendRequest(paramsDict, self.onTicker, API_FLAG_TICKER)
 
     # ----------------------------------------------------------------------
-    def onTicker(self, data):
+    def onTicker(self, tickData,depthData):
         """"""
-        if 'ticker' not in data:
+        if 'ticker' not in tickData:
             return
-        ticker = data['ticker']
+        if 'asks' not in depthData or 'bids' not in depthData:
+            return
+        ticker = tickData['ticker']
         symbol = BTC_USD_FUTURE
         #vtSymbol= EXCHANGE_NAME+'_'+symbol
         vtSymbol =symbol
@@ -410,8 +415,19 @@ class Api(vnokcoin_future_usd.OkcoinApi):
         tick.lowPrice = float(ticker['low'])
         tick.lastPrice = float(ticker['last'])
         tick.volume = float(ticker['vol'])
-        tick.date, tick.time = generateDateTime(data['date'])
+        tick.date, tick.time = generateDateTime(tickData['date'])
 
+        tick.bidPrice1, tick.bidVolume1 = depthData['bids'][0]
+        tick.bidPrice2, tick.bidVolume2 = depthData['bids'][1]
+        tick.bidPrice3, tick.bidVolume3 = depthData['bids'][2]
+        tick.bidPrice4, tick.bidVolume4 = depthData['bids'][3]
+        tick.bidPrice5, tick.bidVolume5 = depthData['bids'][4]
+
+        tick.askPrice1, tick.askVolume1 = depthData['asks'][0]
+        tick.askPrice2, tick.askVolume2 = depthData['asks'][1]
+        tick.askPrice3, tick.askVolume3 = depthData['asks'][2]
+        tick.askPrice4, tick.askVolume4 = depthData['asks'][3]
+        tick.askPrice5, tick.askVolume5 = depthData['asks'][4]
         newtick = copy(tick)
         self.gateway.onTick(newtick)
 
@@ -424,34 +440,35 @@ class Api(vnokcoin_future_usd.OkcoinApi):
 
     def onDepth(self, data):
         """"""
-        # if 'asks' not in data:
-        #     return
-        #
-        # symbol = channelSymbolMap[data['symbol']]
-        #
-        # if symbol not in self.tickDict:
-        #     tick = VtTickData()
-        #     tick.symbol = symbol
-        #     tick.vtSymbol = symbol
-        #     tick.gatewayName = self.gatewayName
-        #     self.tickDict[symbol] = tick
-        # else:
-        #     tick = self.tickDict[symbol]
-        #
-        # tick.bidPrice1, tick.bidVolume1 = data['bids'][0]
-        # tick.bidPrice2, tick.bidVolume2 = data['bids'][1]
-        # tick.bidPrice3, tick.bidVolume3 = data['bids'][2]
-        # tick.bidPrice4, tick.bidVolume4 = data['bids'][3]
-        # tick.bidPrice5, tick.bidVolume5 = data['bids'][4]
-        #
-        # tick.askPrice1, tick.askVolume1 = data['asks'][0]
-        # tick.askPrice2, tick.askVolume2 = data['asks'][1]
-        # tick.askPrice3, tick.askVolume3 = data['asks'][2]
-        # tick.askPrice4, tick.askVolume4 = data['asks'][3]
-        # tick.askPrice5, tick.askVolume5 = data['asks'][4]
-        pass
-        #newtick = copy(tick)
-        #self.gateway.onTick(newtick)
+        if 'asks' not in data or 'bids' not in data:
+            return
+
+        symbol = BTC_USD_FUTURE
+        # vtSymbol= EXCHANGE_NAME+'_'+symbol
+        vtSymbol = symbol
+        if vtSymbol not in self.tickDict:
+            tick = VtTickData()
+            tick.symbol = symbol
+            tick.vtSymbol = vtSymbol
+            tick.gatewayName = self.gatewayName
+            tick.exchange = EXCHANGE_NAME
+            self.tickDict[vtSymbol] = tick
+        else:
+            tick = self.tickDict[vtSymbol]
+
+        tick.bidPrice1, tick.bidVolume1 = data['bids'][0]
+        tick.bidPrice2, tick.bidVolume2 = data['bids'][1]
+        tick.bidPrice3, tick.bidVolume3 = data['bids'][2]
+        tick.bidPrice4, tick.bidVolume4 = data['bids'][3]
+        tick.bidPrice5, tick.bidVolume5 = data['bids'][4]
+
+        tick.askPrice1, tick.askVolume1 = data['asks'][0]
+        tick.askPrice2, tick.askVolume2 = data['asks'][1]
+        tick.askPrice3, tick.askVolume3 = data['asks'][2]
+        tick.askPrice4, tick.askVolume4 = data['asks'][3]
+        tick.askPrice5, tick.askVolume5 = data['asks'][4]
+        newtick = copy(tick)
+        self.gateway.onTick(newtick)
 
     # ----------------------------------------------------------------------
     def getOrders(self):
@@ -511,14 +528,15 @@ class Api(vnokcoin_future_usd.OkcoinApi):
         #print "okcoin getTrades end"
 
     #----------------------------------------------------------------------
-    def onGetTrade(self, result):
+    def onGetTrade(self, dataList):
+
         #print "okcoin onGetTrade start"
         """回调函数"""
-        if not result['result']:
+        if not dataList['result']:
             print 'Trade Data Error'
-            return
+            return False
 
-        ordersData=result['orders']
+        ordersData=dataList['orders']
 
         for data in ordersData:
 
@@ -566,10 +584,13 @@ class Api(vnokcoin_future_usd.OkcoinApi):
                 trade.vtTradeID = '.'.join([self.gatewayName, trade.tradeID])
 
                 self.gateway.onTrade(trade)
+                return True
+            else:
+                return False
 
                 #self.orderDict[trade.orderID] = trade
         #print "okcoin onGetTrade end"
-        self.writeLog(u'成交信息查询完成')
+        #self.writeLog(u'成交信息查询完成')
 
     # ----------------------------------------------------------------------
     def spotUserInfo(self):
@@ -584,9 +605,6 @@ class Api(vnokcoin_future_usd.OkcoinApi):
     def onSpotUserInfo(self, data):
         """回调函数"""
         # 持仓信息
-        if not data['result']:
-            print "userInfo Error"
-            return
         for symbol in ['btc']:
 
                 pos = VtPositionData()
@@ -626,9 +644,6 @@ class Api(vnokcoin_future_usd.OkcoinApi):
     def onSpotUserInfo_4fix(self, data):
         """回调函数"""
         # 持仓信息
-        if not data['result']:
-            print "userInfo Error"
-            return
         for symbol in ['btc']:
             pos = VtPositionData()
             pos.gatewayName = self.gatewayName
@@ -652,7 +667,6 @@ class Api(vnokcoin_future_usd.OkcoinApi):
             account.margin = float(funds['risk_rate'])
             account.balance = float(funds['balance'])
             self.gateway.onAccount(account)
-
     # ----------------------------------------------------------------------
 
     def sendOrder(self, params):
@@ -663,7 +677,6 @@ class Api(vnokcoin_future_usd.OkcoinApi):
         TRADE_RESOURCE = "/api/v1/future_trade.do"
         paramsDict = {
             'api_key': self.apiKey,
-            'symbol': 'btc_usd',
             'symbol': 'btc_usd',
             'contract_type': CONTRACT_TYPE
         }
@@ -704,9 +717,8 @@ class Api(vnokcoin_future_usd.OkcoinApi):
                 #self.logger.setInfoLog('onSend_okcoin:' + 'ID:' + self.lastOrderID)
                 print (u'okcoin  onSendOrder Sucess:', self.lastOrderID)
         else:
-            print (u'OKCOIN下单失败，请查询账户资金额度')
+            print (u'OKCOIN期货合约下单失败，请查询账户资金额度')
 
-        print "okcoin onSendOrder start_2"
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()
@@ -729,7 +741,7 @@ class Api(vnokcoin_future_usd.OkcoinApi):
 
     # ----------------------------------------------------------------------
 
-    # 从策略例调用的接口
+    # 从策略例调用订单的接口
     def getTrades_huotou(self, orderID):
         """查询最近的成交订单"""
         ORDER_INFO_RESOURCE = "/api/v1/future_order_info.do"
@@ -747,6 +759,31 @@ class Api(vnokcoin_future_usd.OkcoinApi):
             return orderStatus
         else:
             return False
+
+    # 从策略例调用账户的接口
+    def getUserInfo_huotou(self):
+
+        if self.userInfo_Mod==USERINFO_MODE_FULL:
+            """查询最近的成交订单"""
+            USER_INFO_RESOURCE = "/api/v1/future_userinfo.do"
+            method=self.onSpotUserInfo
+        else:
+            USER_INFO_RESOURCE = "/api/v1/future_userinfo_4fix.do"
+            method = self.onSpotUserInfo_4fix
+        params = {}
+        params['api_key'] = self.apiKey
+        params['sign'] = buildMySign(params, self.secretKey)
+        result = httpPost(OKCOIN_HOST, USER_INFO_RESOURCE, params)
+
+        if result['result']:
+            method(result)
+            return True
+        else:
+            return False
+
+    # ----------------------------------------------------------------------
+    def setGateway(self):
+        self.gateway.onGateway(self.gatewayName)
     # ----------------------------------------------------------------------
     def onCancelOrder(self,data):
         # if data['result'] == 'success':
