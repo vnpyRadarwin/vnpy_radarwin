@@ -665,7 +665,6 @@ class Api(vnokcoin_spot_usd.OkcoinApi):
         else:
             print (u'OKCOIN下单失败，请查询账户资金额度')
 
-        print "okcoin onSendOrder start_2"
         # 收到委托号后，通知发送委托的线程返回委托号
         self.orderCondition.acquire()
         self.orderCondition.notify()

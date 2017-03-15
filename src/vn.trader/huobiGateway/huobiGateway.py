@@ -666,7 +666,6 @@ class Api(vnhuobi.HuobiApi):
                 self.lastOrderID= str(data['id'])
                 self.tradeFlag = True
                 #self.logger.setInfoLog('onSend_huobi:' + 'ID:' + self.lastOrderID)
-                print (u'huobi order sucess:',self.lastOrderID)
         else:
             print (u'火币下单失败，请查询账户资金额度')
         # 收到委托号后，通知发送委托的线程返回委托号
