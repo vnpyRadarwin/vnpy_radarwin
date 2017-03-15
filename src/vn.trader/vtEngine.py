@@ -175,9 +175,9 @@ class MainEngine(object):
             print e
 
         try:
-            from exchangeGateway.exchangeGateway import ExchangeGateway
-            self.addGateway(ExchangeGateway, 'EXCHANGE')
-            self.gatewayDict['EXCHANGE'].setQryEnabled(True)
+            from lhangGateway.lhangGateway import LhangGateway
+            self.addGateway(LhangGateway, 'LHANG')
+            self.gatewayDict['LHANG'].setQryEnabled(True)
         except Exception, e:
             print e
 

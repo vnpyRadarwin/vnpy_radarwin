@@ -424,8 +424,8 @@ class MarketMonitor(BasicMonitor):
         self.setHeaderDict(d)
         
         # 设置数据键 Radarwin
-        #self.setDataKey('vtSymbol')
-        self.setDataKey('gatewayName')
+        self.setDataKey('vtSymbol')
+        #self.setDataKey('gatewayName')
 
         # 设置监控事件类型
         self.setEventType(EVENT_TICK)

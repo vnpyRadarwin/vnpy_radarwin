@@ -193,7 +193,7 @@ class MainWindow(QtGui.QMainWindow):
             sysMenu.addAction(connectChBtcAction)
         if 'HUOBI' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectHuobiAction)
-        if 'EXCHANGE' in self.mainEngine.gatewayDict:
+        if 'LHANG' in self.mainEngine.gatewayDict:
             sysMenu.addAction(connectExchangeAction)
         sysMenu.addSeparator()
         if 'Wind' in self.mainEngine.gatewayDict:
@@ -345,7 +345,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def connectExchange(self):
         """连接中国比特币"""
-        self.mainEngine.connect('EXCHANGE')
+        self.mainEngine.connect('LHANG')
 
     # ----------------------------------------------------------------------
     def test(self):
